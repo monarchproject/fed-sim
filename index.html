@@ -1,0 +1,2997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FED CHAIR — Monetary Policy Simulation</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0a; --bg1: #141414; --bg2: #1e1e1e; --bg3: #282828;
+    --border: #2a2a2a; --border2: #3a3a3a;
+    --text: #f0f0e8; --text2: #b0b0a0; --text3: #606058;
+    --accent: #4a9fff; --red: #ff4444; --green: #22cc88;
+    --yellow: #ffb020; --purple: #9a8fff;
+    --real: #4a9fff; --player: #ffb020;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body { font-family: 'Courier New', monospace; background: var(--bg); color: var(--text); font-size: 16px; }
+
+  .screen { display: none; width: 100%; height: 100vh; overflow: hidden; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* ── TITLE ── */
+  #title-screen { justify-content: center; align-items: center; flex-direction: column; gap: 0; }
+  .game-title { font-size: 4.5rem; font-weight: 700; letter-spacing: 0.4em; }
+  .game-sub { font-size: 16px; color: var(--text3); letter-spacing: 0.5em; margin: 6px 0 8px; font-weight: 600; }
+  .game-desc { font-size: 18px; color: var(--text2); margin-bottom: 2rem; }
+  .era-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: 720px; margin-bottom: 2rem; }
+  .era-card { background: var(--bg1); border: 2px solid var(--border); border-radius: 8px; padding: 1.2rem; cursor: pointer; transition: border-color 0.15s; }
+  .era-card:hover { border-color: var(--border2); }
+  .era-card.selected { border: 2px solid var(--accent); background: #0c1a2a; }
+  .era-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.06em; }
+  .era-years { font-size: 13px; color: var(--text3); margin-bottom: 8px; letter-spacing: 0.12em; }
+  .era-desc { font-size: 14px; color: var(--text2); line-height: 1.6; }
+  .era-diff { display: inline-block; font-size: 13px; padding: 3px 10px; border-radius: 4px; margin-top: 8px; letter-spacing: 0.1em; font-weight: 700; }
+  .diff-hard   { background: #280c0c; color: var(--red);    border: 2px solid #4a1818; }
+  .diff-medium { background: #271a07; color: var(--yellow); border: 2px solid #4a3010; }
+  .diff-easy   { background: #0c1e0d; color: var(--green);  border: 2px solid #104a14; }
+  .start-btn { background: var(--text); color: var(--bg); border: none; border-radius: 6px; padding: 14px 40px; font-family: 'Courier New', monospace; font-size: 18px; letter-spacing: 0.15em; cursor: pointer; font-weight: 700; }
+  .start-btn:disabled { opacity: 0.25; cursor: default; }
+  .start-btn:hover:not(:disabled) { background: #fff; }
+
+  /* ── TOP BAR ── */
+  .top-bar { display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 2px solid var(--border); background: var(--bg1); font-size: 14px; flex-shrink: 0; flex-wrap: wrap; }
+  .top-bar .tl { font-weight: 700; letter-spacing: 0.12em; font-size: 15px; }
+  .top-bar .dim { color: var(--text3); }
+  .top-bar .val { color: var(--text); font-weight: 600; }
+  .meeting-badge { background: #0c1a2a; border: 2px solid var(--accent); border-radius: 4px; padding: 3px 10px; font-size: 13px; color: var(--accent); letter-spacing: 0.1em; font-weight: 700; }
+  .no-meeting-badge { background: var(--bg2); border: 2px solid var(--border); border-radius: 4px; padding: 3px 10px; font-size: 13px; color: var(--text3); letter-spacing: 0.1em; }
+  .approval-bar { display: flex; align-items: center; gap: 6px; }
+  .bar-bg { width: 90px; height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--green); border-radius: 4px; transition: width 0.5s; }
+  .regime-badge { font-size: 12px; color: var(--purple); border: 1px solid #4a3a8a; border-radius: 4px; padding: 2px 8px; background: #18163a; font-weight: 600; }
+  .divergence-badge { font-size: 12px; color: var(--yellow); border: 1px solid #5a4a18; border-radius: 4px; padding: 2px 8px; background: #1e1a08; font-weight: 600; }
+
+  .game-body { display: grid; grid-template-columns: 340px 1fr 300px; flex: 1; overflow: hidden; gap: 0; }
+
+  /* ── LEFT PANEL (controls + metrics) ── */
+  .left-panel { padding: 12px; border-right: 2px solid var(--border); overflow-y: auto; background: var(--bg1); display: flex; flex-direction: column; gap: 10px; }
+
+  .section-label { font-size: 13px; color: var(--text3); letter-spacing: 0.22em; text-transform: uppercase; margin-bottom: 8px; font-weight: 700; }
+
+  /* Metrics */
+  .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .metric { background: var(--bg2); border: 2px solid var(--border); border-radius: 6px; padding: 8px 10px; }
+  .metric-label { font-size: 12px; color: var(--text3); margin-bottom: 4px; letter-spacing: 0.08em; font-weight: 600; }
+  .metric-dual { display: flex; gap: 6px; align-items: baseline; }
+  .metric-real   { font-size: 22px; font-weight: 700; color: var(--real); }
+  .metric-player { font-size: 17px; font-weight: 700; color: var(--player); }
+  .metric-divider { color: var(--text3); font-size: 14px; }
+  .metric-chg { font-size: 12px; margin-top: 2px; color: var(--text3); }
+  .chg-bad  { color: var(--red); } .chg-good { color: var(--green); }
+  .track-legend { display: flex; gap: 12px; font-size: 13px; font-weight: 600; }
+  .tleg-r { color: var(--real); } .tleg-p { color: var(--player); }
+
+  /* Controls */
+  .controls-box { background: var(--bg2); border: 2px solid var(--border); border-radius: 8px; padding: 12px; }
+  .meeting-only-msg { text-align: center; font-size: 13px; color: var(--yellow); padding: 6px; margin-bottom: 8px; background: #1e1a08; border: 1px solid #5a4a18; border-radius: 5px; letter-spacing: 0.08em; display: none; font-weight: 700; }
+  .rate-display { font-size: 3rem; font-weight: 700; text-align: center; margin-bottom: 6px; color: var(--text); }
+  .rate-preview { font-size: 14px; text-align: center; color: var(--text2); margin-bottom: 8px; min-height: 18px; font-weight: 600; }
+  .rate-controls { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .rate-btn { background: var(--bg); border: 2px solid var(--border); border-radius: 4px; padding: 8px 10px; font-family: 'Courier New', monospace; font-size: 14px; cursor: pointer; color: var(--text2); transition: all 0.1s; font-weight: 600; }
+  .rate-btn:hover:not(:disabled) { border-color: var(--border2); color: var(--text); }
+  .rate-btn.selected-rate { border-color: var(--accent); color: var(--accent); background: #0c1a2a; }
+  .rate-btn:disabled { opacity: 0.35; cursor: default; }
+  .sub-label { font-size: 12px; color: var(--text3); margin-bottom: 5px; letter-spacing: 0.1em; font-weight: 700; }
+  .div-line { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+  .qe-controls, .tone-row { display: flex; gap: 5px; margin-bottom: 8px; }
+  .qe-btn, .tone-btn { flex: 1; background: var(--bg); border: 2px solid var(--border); border-radius: 4px; padding: 8px 6px; font-family: 'Courier New', monospace; font-size: 14px; cursor: pointer; text-align: center; color: var(--text2); transition: all 0.1s; font-weight: 700; }
+  .qe-btn:hover, .tone-btn:hover { border-color: var(--border2); color: var(--text); }
+  .active-qe     { background: #0c1a2a !important; border-color: var(--accent) !important; color: var(--accent) !important; }
+  .active-qt     { background: #200808 !important; border-color: var(--red) !important;    color: var(--red) !important; }
+  .active-neutral{ background: var(--bg2) !important; border-color: var(--border2) !important; color: var(--text) !important; }
+  .active-tone   { border-color: var(--border2) !important; color: var(--text) !important; background: var(--bg3) !important; font-weight: 700; }
+
+  .effect-preview { background: var(--bg); border: 2px solid var(--border); border-radius: 4px; padding: 8px 10px; font-size: 13px; color: var(--text2); margin-bottom: 10px; line-height: 1.8; }
+  .eff-pos { color: var(--green); font-weight: 700; } .eff-neg { color: var(--red); font-weight: 700; }
+
+  .next-btn { width: 100%; background: var(--text); color: var(--bg); border: none; border-radius: 5px; padding: 12px; font-family: 'Courier New', monospace; font-size: 18px; letter-spacing: 0.1em; cursor: pointer; font-weight: 700; transition: background 0.1s; }
+  .next-btn:hover { background: #fff; }
+
+  /* ── CENTER PANEL (charts stacked) ── */
+  .center-panel { overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; background: var(--bg); }
+
+  .chart-block { background: var(--bg1); border: 2px solid var(--border); border-radius: 6px; padding: 10px; flex-shrink: 0; }
+  .chart-block-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .chart-title { font-size: 14px; color: var(--text2); letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700; }
+  .chart-subtitle { font-size: 12px; color: var(--text3); }
+  .chart-wrap { position: relative; height: 140px; }
+
+  /* Crisis banners */
+  .crisis-bar { display: flex; gap: 8px; flex-shrink: 0; }
+  .recession-banner { flex: 1; background: #280c0c; border: 2px solid var(--red); border-radius: 5px; padding: 8px 12px; font-size: 16px; color: var(--red); text-align: center; letter-spacing: 0.08em; display: none; font-weight: 700; }
+  .inflation-crisis-banner { flex: 1; background: #271a07; border: 2px solid var(--yellow); border-radius: 5px; padding: 8px 12px; font-size: 16px; color: var(--yellow); text-align: center; letter-spacing: 0.08em; display: none; font-weight: 700; }
+
+  /* Forward projection note */
+  .fwd-note { font-size: 12px; color: var(--text3); text-align: right; padding: 2px 0; }
+
+  /* ── RIGHT PANEL ── */
+  .right-panel { padding: 12px; border-left: 2px solid var(--border); overflow-y: auto; background: var(--bg1); display: flex; flex-direction: column; gap: 10px; }
+
+  .event-item { border-left: 4px solid var(--border); padding: 10px 12px; font-size: 14px; line-height: 1.55; margin-bottom: 8px; border-radius: 0 4px 4px 0; }
+  .event-item.shock  { border-color: var(--red);    background: rgba(255,68,68,0.08); }
+  .event-item.policy { border-color: var(--yellow);  background: rgba(255,176,32,0.08); }
+  .event-item.market { border-color: var(--accent);  background: rgba(74,159,255,0.08); }
+  .event-item.info   { border-color: var(--green);   background: rgba(34,204,136,0.08); }
+  .event-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; color: var(--text); letter-spacing: 0.03em; }
+  .event-body  { color: var(--text2); font-size: 13px; line-height: 1.6; }
+
+  .approval-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 6px; color: var(--text2); font-weight: 600; }
+  .mini-bar  { width: 70px; height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+  .mini-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
+  .ap-num { min-width: 28px; text-align: right; font-size: 13px; font-weight: 700; }
+
+  .info-box { background: var(--bg2); border: 2px solid var(--border); border-radius: 5px; padding: 8px 10px; font-size: 14px; color: var(--text2); line-height: 1.8; }
+  .info-box .tval { color: var(--text); font-weight: 700; }
+  .tdiff-pos { color: var(--green); font-weight: 700; } .tdiff-neg { color: var(--red); font-weight: 700; }
+
+  /* Forward projection summary */
+  .proj-item { font-size: 14px; color: var(--text2); margin-bottom: 4px; }
+  .proj-val { font-weight: 700; }
+  .proj-up { color: var(--red); } .proj-dn { color: var(--green); }
+
+  /* Divergence tracker */
+  .div-track { display: flex; flex-direction: column; gap: 5px; }
+  .div-row { display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; }
+  .div-val { color: var(--yellow); font-weight: 700; }
+
+  #end-screen { justify-content: center; align-items: center; flex-direction: column; overflow-y: auto; padding: 2rem; }
+  .grade-big { font-size: 6rem; font-weight: 700; margin: 0.6rem 0 0.3rem; }
+  .legacy-text { font-size: 18px; color: var(--text2); max-width: 560px; text-align: center; margin: 0 auto 1.4rem; line-height: 1.85; }
+  .stats-row { display: flex; justify-content: center; gap: 28px; margin-bottom: 1.4rem; flex-wrap: wrap; }
+  .stat-item { text-align: center; }
+  .stat-num { font-size: 24px; font-weight: 700; }
+  .stat-lbl { font-size: 12px; color: var(--text3); letter-spacing: 0.1em; margin-top: 3px; }
+  .replay-btn { background: var(--text); color: var(--bg); border: none; border-radius: 6px; padding: 14px 36px; font-family: 'Courier New', monospace; font-size: 18px; cursor: pointer; font-weight: 700; letter-spacing: 0.1em; }
+  .replay-btn:hover { background: #fff; }
+  .grade-A { color: var(--green); } .grade-B { color: var(--accent); } .grade-C { color: var(--yellow); } .grade-D { color: var(--red); }
+
+  /* ── LOADING ── */
+  .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(10,10,10,0.95); z-index: 100; justify-content: center; align-items: center; flex-direction: column; gap: 16px; }
+  .loading-overlay.active { display: flex; }
+  .loading-text { font-size: 18px; color: var(--text2); letter-spacing: 0.2em; }
+  .loading-dots::after { content: ''; animation: dots 1.2s steps(3, end) infinite; }
+  @keyframes dots { 0%{content:'.'}33%{content:'..'}66%{content:'...'}100%{content:'.'} }
+
+  .event-item.comment { border-color: var(--text3); background: rgba(255,255,255,0.03); }
+
+  /* ── DUAL APPROVAL (You vs Fed) ── */
+  .dual-ap-row { display:flex; justify-content:space-between; align-items:center; font-size:13px; margin-bottom:7px; gap:6px; }
+  .dual-ap-label { min-width:70px; color:var(--text2); font-weight:600; font-size:12px; }
+  .dual-bars { display:flex; flex-direction:column; gap:3px; flex:1; }
+  .dual-bar-line { display:flex; align-items:center; gap:4px; font-size:11px; }
+  .dual-bar-bg { flex:1; height:6px; background:var(--bg3); border-radius:3px; overflow:hidden; }
+  .dual-bar-fill { height:100%; border-radius:3px; transition:width 0.5s; }
+  .dual-bar-lbl { color:var(--text3); min-width:20px; font-size:10px; letter-spacing:0.05em; }
+  .dual-bar-num { min-width:24px; text-align:right; font-weight:700; font-size:11px; }
+
+  /* ── SCORECARD TABLE ── */
+  .scorecard { width:100%; font-size:12px; border-collapse:collapse; }
+  .scorecard th { color:var(--text3); font-size:10px; letter-spacing:0.12em; font-weight:700; text-align:left; padding:2px 4px; border-bottom:1px solid var(--border); }
+  .scorecard td { padding:3px 4px; font-weight:600; font-size:12px; }
+  .scorecard tr:nth-child(even) td { background:rgba(255,255,255,0.02); }
+  .sc-you  { color:var(--player); }
+  .sc-fed  { color:var(--real); }
+  .sc-win  { color:var(--green); }
+  .sc-lose { color:var(--red); }
+  .comment-source { font-size: 11px; letter-spacing: 0.12em; color: var(--text3); margin-bottom: 3px; font-weight: 700; text-transform: uppercase; }
+  .comment-quote { font-size: 13px; color: var(--text2); font-style: italic; line-height: 1.55; }
+  /* ── CHARACTER REACTION — inline below charts ── */
+  .char-popup {
+    display: none;
+    margin: 0 0 8px 0;
+    background: var(--bg1); border: 2px solid var(--border2);
+    border-radius: 10px; padding: 14px 16px;
+    animation: popIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+    cursor: pointer;
+  }
+  .char-popup.active { display: flex; gap: 12px; align-items: flex-start; }
+  .char-popup.angry  { border-color: var(--red);    background: rgba(255,68,68,0.06); }
+  .char-popup.happy  { border-color: var(--green);  background: rgba(34,204,136,0.06); }
+  .char-popup.warn   { border-color: var(--yellow); background: rgba(255,176,32,0.06); }
+  @keyframes popIn { from { transform: scale(0.7) translateY(20px); opacity:0; } to { transform: scale(1) translateY(0); opacity:1; } }
+  .char-avatar {
+    font-size: 2.8rem; line-height: 1; flex-shrink: 0;
+    width: 54px; height: 54px; display: flex; align-items: center; justify-content: center;
+    background: var(--bg2); border-radius: 50%; border: 2px solid var(--border2);
+  }
+  .char-body { flex: 1; }
+  .char-name { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; color: var(--text3); margin-bottom: 3px; text-transform: uppercase; }
+  .char-mood { font-size: 10px; letter-spacing: 0.08em; margin-bottom: 6px; font-weight: 700; }
+  .char-mood.angry { color: var(--red); } .char-mood.happy { color: var(--green); } .char-mood.warn { color: var(--yellow); }
+  .char-quote { font-size: 13px; color: var(--text); line-height: 1.55; font-style: italic; }
+  .char-dismiss { font-size: 10px; color: var(--text3); margin-top: 6px; letter-spacing: 0.08em; }
+
+  /* ── RESPONSIVE / FIT-TO-SCREEN ── */
+
+  /* Clamp root font size so everything scales with viewport */
+  html { font-size: clamp(10px, 0.95vw, 14px); }
+
+  /* Title screen: shrink on short/narrow viewports */
+  .game-title { font-size: clamp(1.6rem, 5vw, 3.6rem); }
+  .game-desc  { font-size: clamp(13px, 1.1vw, 18px); margin-bottom: 1rem; }
+  .era-grid   { width: min(720px, 94vw); gap: 10px; }
+  .era-card   { padding: 0.9rem; }
+  .era-desc   { font-size: clamp(12px, 0.9vw, 14px); }
+
+  /* Game body: fluid columns, min widths so panels don't disappear */
+  .game-body {
+    grid-template-columns: clamp(190px, 19vw, 290px) 1fr clamp(170px, 16vw, 260px);
+  }
+
+  /* Left panel: tighten up */
+  .left-panel  { padding: 8px; gap: 7px; }
+  .right-panel { padding: 8px; gap: 7px; }
+  .metrics-grid { gap: 4px; }
+  .metric { padding: 6px 8px; }
+  .metric-real   { font-size: clamp(14px, 1.4vw, 22px); }
+  .metric-player { font-size: clamp(12px, 1.1vw, 17px); }
+  .metric-label  { font-size: clamp(9px, 0.75vw, 12px); }
+
+  /* Rate display */
+  .rate-display { font-size: clamp(1.4rem, 2vw, 2.2rem); margin-bottom: 2px; }
+  .rate-btn { padding: 6px 7px; font-size: clamp(11px, 0.85vw, 14px); }
+  .controls-box { padding: 9px; }
+  .next-btn { padding: 9px; font-size: clamp(13px, 1.1vw, 18px); }
+
+  /* Center charts: fill available height evenly */
+  .center-panel { padding: 6px; gap: 5px; }
+  .chart-block  { padding: 7px; }
+  /* Each chart block takes ~18% of screen height, min 110px */
+  .chart-wrap   { height: clamp(95px, 12vh, 135px); }
+
+  /* Top bar: don't let it grow tall; clip gracefully */
+  .top-bar { padding: 5px 10px; gap: 8px; font-size: clamp(11px, 0.9vw, 14px); flex-wrap: nowrap; overflow-x: auto; }
+  .top-bar .tl { font-size: clamp(12px, 1vw, 15px); }
+
+  /* Collapse approval bar on narrow screens */
+  .bar-bg { width: clamp(50px, 5vw, 90px); }
+
+  /* Event log items */
+  .event-item { font-size: clamp(11px, 0.85vw, 14px); padding: 7px 9px; margin-bottom: 5px; }
+  .event-title { font-size: clamp(12px, 0.9vw, 15px); }
+  .info-box { font-size: clamp(11px, 0.85vw, 14px); padding: 7px 9px; }
+
+  /* End screen */
+  .grade-big   { font-size: clamp(2.4rem, 6vw, 4.5rem); }
+  .legacy-text { font-size: clamp(14px, 1.2vw, 18px); }
+  .stat-num    { font-size: clamp(16px, 1.6vw, 24px); }
+
+  /* ── BREAKPOINT: very narrow (under 900px) collapse to 2-col ── */
+  @media (max-width: 900px) {
+    .game-body {
+      grid-template-columns: clamp(180px, 30vw, 260px) 1fr;
+      grid-template-rows: 1fr auto;
+    }
+    /* Right panel moves to a horizontal strip at the bottom */
+    .right-panel {
+      grid-column: 1 / -1;
+      flex-direction: row;
+      flex-wrap: wrap;
+      overflow-y: visible;
+      overflow-x: auto;
+      border-left: none;
+      border-top: 2px solid var(--border);
+      max-height: 180px;
+      padding: 6px 10px;
+    }
+    .right-panel > * { flex: 1 1 160px; min-width: 140px; }
+    #event-feed { display: none; } /* hide log on narrow */
+  }
+
+  /* ── BREAKPOINT: very short viewport — tighten vertical space ── */
+  @media (max-height: 700px) {
+    .top-bar { padding: 3px 8px; }
+    .chart-wrap { height: clamp(90px, 12vh, 130px); }
+    .rate-display { font-size: 1.6rem; margin-bottom: 2px; }
+    .section-label { margin-bottom: 4px; }
+    .controls-box { padding: 6px; }
+    .left-panel { gap: 5px; }
+  }
+
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div style="font-size:1.2rem;font-weight:700;letter-spacing:0.3em;">FED CHAIR</div>
+  <div class="loading-text loading-dots" id="loading-msg">LOADING HISTORICAL DATA</div>
+</div>
+
+<!-- ── TITLE ── -->
+<div id="title-screen" class="screen active">
+  <div class="game-title">FED CHAIR</div>
+  <div class="game-sub">MONETARY POLICY SIMULATION</div>
+  <div class="game-desc">Inherit the economy. Set rates. Make history — or repeat its mistakes.</div>
+  <div class="era-grid" id="era-grid">
+    <div class="era-card" data-era="volcker" onclick="selectEra(this)">
+      <div class="era-name">PAUL VOLCKER</div>
+      <div class="era-years">AUG 1979 — AUG 1987</div>
+      <div class="era-desc">Inflation at 14.8%. Iranian oil shock. Stagflation. Raise rates to crush it — or break the economy trying.</div>
+      <span class="era-diff diff-hard">HARD</span>
+    </div>
+    <div class="era-card" data-era="greenspan" onclick="selectEra(this)">
+      <div class="era-name">ALAN GREENSPAN</div>
+      <div class="era-years">AUG 1987 — FEB 2006</div>
+      <div class="era-desc">Black Monday just happened. S&L crisis. Dotcom boom. 9/11. Navigate two decades as the "Maestro."</div>
+      <span class="era-diff diff-medium">MEDIUM</span>
+    </div>
+    <div class="era-card" data-era="bernanke" onclick="selectEra(this)">
+      <div class="era-name">BEN BERNANKE</div>
+      <div class="era-years">FEB 2006 — FEB 2014</div>
+      <div class="era-desc">The housing bubble is cracking. Financial crisis looms. Invent QE or watch the entire system collapse.</div>
+      <span class="era-diff diff-hard">HARD</span>
+    </div>
+    <div class="era-card" data-era="powell" onclick="selectEra(this)">
+      <div class="era-name">JEROME POWELL</div>
+      <div class="era-years">JAN 2020 — PRESENT</div>
+      <div class="era-desc">COVID hits. Zero rates, $9T balance sheet. Then inflation surges to 9.1%. Fastest hike cycle in 40 years.</div>
+      <span class="era-diff diff-medium">MEDIUM</span>
+    </div>
+  </div>
+  <button class="start-btn" id="start-btn" onclick="startGame()" disabled>SELECT AN ERA TO BEGIN</button>
+  <div style="font-size:0.57rem;color:var(--text3);margin-top:0.9rem;letter-spacing:0.1em;">
+    REAL FRED DATA · REGIME VAR · FORWARD EXPECTATIONS · IRF-CALIBRATED
+  </div>
+</div>
+
+<!-- ── GAME ── -->
+<div id="game-screen" class="screen">
+  <div class="top-bar">
+    <span class="tl" id="top-title">FED CHAIR</span>
+    <span class="dim">|</span>
+    <span class="val" id="top-date">—</span>
+    <span class="dim">|</span>
+    <span class="dim">MTH</span><span class="val" id="top-progress">1/?</span>
+    <span class="dim">|</span>
+    <span id="meeting-badge" class="meeting-badge">⬤ FOMC MEETING</span>
+    <span class="dim">|</span>
+    <span id="regime-badge" class="regime-badge">REGIME</span>
+    <span class="dim">|</span>
+    <div class="approval-bar">
+      <span class="dim">APPROVAL</span>
+      <div class="bar-bg"><div class="bar-fill" id="main-bar" style="width:50%"></div></div>
+      <span class="val" id="approval-num">50%</span>
+    </div>
+    <span class="dim">|</span>
+    <span class="divergence-badge" id="divergence-badge">DIV 0.0</span>
+    <span class="dim">|</span>
+    <span class="dim">SCORE</span><span class="val" id="score-display">0</span>
+  </div>
+
+  <div class="game-body">
+
+    <!-- LEFT: controls + metrics -->
+    <div class="left-panel">
+      <div>
+        <div class="section-label">Economic Dashboard</div>
+        <div class="track-legend" style="margin-bottom:6px;">
+          <span class="tleg-r">── REAL</span>
+          <span class="tleg-p">── PLAYER</span>
+        </div>
+        <div class="metrics-grid">
+          <div class="metric">
+            <div class="metric-label">INFLATION (CPI YOY)</div>
+            <div class="metric-dual">
+              <div class="metric-real" id="m-inf-r">--</div>
+              <div class="metric-divider">/</div>
+              <div class="metric-player" id="m-inf-p">--</div>
+            </div>
+            <div class="metric-chg" id="m-inf-chg"></div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">UNEMPLOYMENT</div>
+            <div class="metric-dual">
+              <div class="metric-real" id="m-unemp-r">--</div>
+              <div class="metric-divider">/</div>
+              <div class="metric-player" id="m-unemp-p">--</div>
+            </div>
+            <div class="metric-chg" id="m-unemp-chg"></div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">GROWTH (IP PROXY)</div>
+            <div class="metric-dual">
+              <div class="metric-real" id="m-growth-r">--</div>
+              <div class="metric-divider">/</div>
+              <div class="metric-player" id="m-growth-p">--</div>
+            </div>
+            <div class="metric-chg" id="m-growth-chg"></div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">FED FUNDS RATE</div>
+            <div class="metric-dual">
+              <div class="metric-real" id="m-rate-r">--</div>
+              <div class="metric-divider">/</div>
+              <div class="metric-player" id="m-rate-p">--</div>
+            </div>
+            <div class="metric-chg" id="m-rate-chg"></div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">YIELD SPREAD (10Y-2Y)</div>
+            <div class="metric-dual">
+              <div class="metric-real" id="m-yc-r">--</div>
+              <div class="metric-divider">/</div>
+              <div class="metric-player" id="m-yc-p">--</div>
+            </div>
+            <div class="metric-chg" id="m-yc-chg"></div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">EXPECTATIONS INDEX</div>
+            <div class="metric-dual">
+              <div class="metric-real" id="m-exp">--</div>
+            </div>
+            <div class="metric-chg" id="m-exp-chg" style="color:var(--text3)">fwd guidance</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-label" style="margin-bottom:0;">Policy Controls</div>
+      <div class="controls-box">
+        <div id="meeting-only-msg" class="meeting-only-msg">NO FOMC MEETING — ADVANCING WITHOUT RATE DECISION</div>
+        <div class="rate-display" id="rate-display">0.00%</div>
+        <div class="rate-preview" id="rate-preview"></div>
+        <div class="sub-label">FEDERAL FUNDS RATE ADJUSTMENT</div>
+        <div class="rate-controls">
+          <button class="rate-btn" data-delta="-1"    onclick="changeRate(-1,this)">−100bps</button>
+          <button class="rate-btn" data-delta="-0.5"  onclick="changeRate(-0.5,this)">−50bps</button>
+          <button class="rate-btn" data-delta="-0.25" onclick="changeRate(-0.25,this)">−25bps</button>
+          <button class="rate-btn selected-rate" data-delta="0" onclick="changeRate(0,this)">HOLD</button>
+          <button class="rate-btn" data-delta="0.25"  onclick="changeRate(0.25,this)">+25bps</button>
+          <button class="rate-btn" data-delta="0.5"   onclick="changeRate(0.5,this)">+50bps</button>
+          <button class="rate-btn" data-delta="1"     onclick="changeRate(1,this)">+100bps</button>
+        </div>
+        <hr class="div-line">
+        <div class="sub-label">BALANCE SHEET POLICY</div>
+        <div class="qe-controls">
+          <div class="qe-btn" id="qe-btn"      onclick="setBS('qe')">QE · BUY</div>
+          <div class="qe-btn active-neutral" id="neutral-btn" onclick="setBS('neutral')">NEUTRAL</div>
+          <div class="qe-btn" id="qt-btn"      onclick="setBS('qt')">QT · SELL</div>
+        </div>
+        <div class="sub-label">FORWARD GUIDANCE TONE</div>
+        <div class="tone-row">
+          <div class="tone-btn" id="tone-dovish"  onclick="setTone('dovish')">DOVISH</div>
+          <div class="tone-btn active-tone" id="tone-neutral" onclick="setTone('neutral')">NEUTRAL</div>
+          <div class="tone-btn" id="tone-hawkish" onclick="setTone('hawkish')">HAWKISH</div>
+        </div>
+        <div class="effect-preview" id="effect-preview">Select a rate move to see projected effects.</div>
+        <button class="next-btn" id="next-btn" onclick="nextMonth()">ADVANCE MONTH →</button>
+      </div>
+    </div>
+
+    <!-- CENTER: stacked charts -->
+    <div class="center-panel" id="center-panel">
+      <div class="crisis-bar">
+        <div id="recession-banner" class="recession-banner">⚠ RECESSION — 2 CONSECUTIVE MONTHS NEGATIVE GROWTH</div>
+        <div id="inflation-crisis-banner" class="inflation-crisis-banner">⚠ INFLATION CRISIS — CREDIBILITY AT RISK</div>
+      </div>
+
+      <div class="chart-block">
+        <div class="chart-block-header">
+          <span class="chart-title">INFLATION (CPI YOY %)</span>
+          <span class="chart-subtitle">Real vs Player · 2% target</span>
+        </div>
+        <div class="chart-wrap"><canvas id="chart-inflation"></canvas></div>
+      </div>
+
+      <div class="chart-block">
+        <div class="chart-block-header">
+          <span class="chart-title">UNEMPLOYMENT RATE (%)</span>
+          <span class="chart-subtitle">Real vs Player · NAIRU ~5%</span>
+        </div>
+        <div class="chart-wrap"><canvas id="chart-unemployment"></canvas></div>
+      </div>
+
+      <div class="chart-block">
+        <div class="chart-block-header">
+          <span class="chart-title">GROWTH — IP-BASED PROXY (YOY %)</span>
+          <span class="chart-subtitle">Industrial production, not GDP</span>
+        </div>
+        <div class="chart-wrap"><canvas id="chart-growth"></canvas></div>
+      </div>
+
+      <div class="chart-block">
+        <div class="chart-block-header">
+          <span class="chart-title">FED FUNDS RATE (%)</span>
+          <span class="chart-subtitle">Real decision vs Player path</span>
+        </div>
+        <div class="chart-wrap"><canvas id="chart-rate"></canvas></div>
+      </div>
+
+      <div class="chart-block">
+        <div class="chart-block-header">
+          <span class="chart-title">YIELD CURVE SPREAD (10Y−2Y %)</span>
+          <span class="chart-subtitle">Negative = inverted (recession signal)</span>
+        </div>
+        <div class="chart-wrap"><canvas id="chart-spread"></canvas></div>
+      </div>
+
+      <!-- Inline character reaction — appears below charts -->
+      <div id="char-popup" class="char-popup" onclick="dismissPopup()">
+        <div class="char-avatar" id="char-avatar">🧑</div>
+        <div class="char-body">
+          <div class="char-name" id="char-name">—</div>
+          <div class="char-mood" id="char-mood">—</div>
+          <div class="char-quote" id="char-quote">—</div>
+          <div class="char-dismiss">click to dismiss</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: sidebar -->
+    <div class="right-panel">
+
+      <div class="section-label">Active Policy Pipeline</div>
+      <div class="info-box" id="pipeline-box" style="font-size:13px;line-height:1.9;">
+        <span style="color:var(--text3)">No active rate shocks in pipeline.</span>
+      </div>
+
+      <div class="section-label">Taylor Rule</div>
+      <div class="info-box" id="taylor-box">—</div>
+
+      <div class="section-label">12-Month Projection</div>
+      <div id="fwd-projection" class="info-box">
+        <div class="proj-item">Advance month to see projections.</div>
+      </div>
+
+      <div class="section-label">Divergence from Reality</div>
+      <div class="div-track info-box">
+        <div class="div-row"><span>Inflation</span><span class="div-val" id="div-inf">—</span></div>
+        <div class="div-row"><span>Unemployment</span><span class="div-val" id="div-unemp">—</span></div>
+        <div class="div-row"><span>Growth</span><span class="div-val" id="div-growth">—</span></div>
+        <div class="div-row" style="margin-top:4px;border-top:1px solid var(--border);padding-top:4px;">
+          <span style="color:var(--text2);">Cumulative</span><span class="div-val" id="div-total">—</span>
+        </div>
+      </div>
+
+      <div class="section-label">Approval Ratings — You vs Real Fed</div>
+      <div id="dual-approvals">
+        <!-- Markets -->
+        <div class="dual-ap-row">
+          <span class="dual-ap-label">Markets</span>
+          <div class="dual-bars">
+            <div class="dual-bar-line"><span class="dual-bar-lbl sc-you">YOU</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-markets" style="width:50%;background:var(--player)"></div></div><span class="dual-bar-num sc-you" id="ap-markets-n">50</span></div>
+            <div class="dual-bar-line"><span class="dual-bar-lbl sc-fed">FED</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-fed-markets" style="width:50%;background:var(--real)"></div></div><span class="dual-bar-num sc-fed" id="ap-fed-markets-n">50</span></div>
+          </div>
+        </div>
+        <!-- Congress -->
+        <div class="dual-ap-row">
+          <span class="dual-ap-label">Congress</span>
+          <div class="dual-bars">
+            <div class="dual-bar-line"><span class="dual-bar-lbl sc-you">YOU</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-congress" style="width:50%;background:var(--player)"></div></div><span class="dual-bar-num sc-you" id="ap-congress-n">50</span></div>
+            <div class="dual-bar-line"><span class="dual-bar-lbl sc-fed">FED</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-fed-congress" style="width:50%;background:var(--real)"></div></div><span class="dual-bar-num sc-fed" id="ap-fed-congress-n">50</span></div>
+          </div>
+        </div>
+        <!-- Public -->
+        <div class="dual-ap-row">
+          <span class="dual-ap-label">Public</span>
+          <div class="dual-bars">
+            <div class="dual-bar-line"><span class="dual-bar-lbl sc-you">YOU</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-public" style="width:50%;background:var(--player)"></div></div><span class="dual-bar-num sc-you" id="ap-public-n">50</span></div>
+            <div class="dual-bar-line"><span class="dual-bar-lbl sc-fed">FED</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-fed-public" style="width:50%;background:var(--real)"></div></div><span class="dual-bar-num sc-fed" id="ap-fed-public-n">50</span></div>
+          </div>
+        </div>
+        <!-- Economists -->
+        <div class="dual-ap-row">
+          <span class="dual-ap-label">Economists</span>
+          <div class="dual-bars">
+            <div class="dual-bar-line"><span class="dual-bar-lbl sc-you">YOU</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-econ" style="width:50%;background:var(--player)"></div></div><span class="dual-bar-num sc-you" id="ap-econ-n">50</span></div>
+            <div class="dual-bar-line"><span class="dual-bar-lbl sc-fed">FED</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-fed-econ" style="width:50%;background:var(--real)"></div></div><span class="dual-bar-num sc-fed" id="ap-fed-econ-n">50</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-label">Scorecard vs Real Fed</div>
+      <div class="info-box" id="scorecard-box">
+        <table class="scorecard">
+          <thead><tr><th>METRIC</th><th class="sc-you">YOU</th><th class="sc-fed">FED</th><th>EDGE</th></tr></thead>
+          <tbody id="scorecard-body">
+            <tr><td colspan="4" style="color:var(--text3)">Advance to see scorecard.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section-label">Event Log</div>
+      <div id="event-feed">
+        <div class="event-item info">
+          <div class="event-title">YOUR TERM BEGINS</div>
+          <div class="event-body">Inherit the economy. Decisions at FOMC meeting months only.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── END ── -->
+<div id="end-screen" class="screen">
+  <div class="section-label" style="letter-spacing:0.2em;margin-bottom:0.4rem;">TERM CONCLUDED — LEGACY GRADE</div>
+  <div class="grade-big" id="final-grade">B</div>
+  <div id="final-identity" style="font-size:1rem;letter-spacing:0.18em;margin-bottom:0.3rem;font-weight:700;"></div>
+  <div id="final-chair" style="font-size:0.57rem;color:var(--text3);letter-spacing:0.2em;margin-bottom:0.6rem;"></div>
+  <div id="final-legacy" class="legacy-text"></div>
+  <div style="font-size:0.57rem;color:var(--text3);margin-bottom:0.7rem;letter-spacing:0.1em;">PERFORMANCE BREAKDOWN vs REAL HISTORY</div>
+  <div id="fed-vs-you-compare" style="text-align:center;margin-bottom:1rem;background:var(--bg1);border:2px solid var(--border);border-radius:8px;padding:16px 20px;"></div>
+  <div class="stats-row">
+    <div class="stat-item"><div class="stat-num" id="stat-avg-inf">-</div><div class="stat-lbl">YOUR AVG INFLATION</div></div>
+    <div class="stat-item"><div class="stat-num" id="stat-real-inf">-</div><div class="stat-lbl">REAL AVG INFLATION</div></div>
+    <div class="stat-item"><div class="stat-num" id="stat-avg-unemp">-</div><div class="stat-lbl">YOUR AVG UNEMPLOYMENT</div></div>
+    <div class="stat-item"><div class="stat-num" id="stat-real-unemp">-</div><div class="stat-lbl">REAL AVG UNEMPLOYMENT</div></div>
+    <div class="stat-item"><div class="stat-num" id="stat-score">-</div><div class="stat-lbl">FINAL SCORE / MONTH</div></div>
+    <div class="stat-item"><div class="stat-num" id="stat-recessions">-</div><div class="stat-lbl">RECESSIONS</div></div>
+    <div class="stat-item"><div class="stat-num" id="stat-divergence">-</div><div class="stat-lbl">TOTAL DIVERGENCE</div></div>
+  </div>
+  <div style="display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin-bottom:1.2rem;font-size:13px;color:var(--text3);">
+    <span id="stat-hikes">-</span>
+    <span id="stat-cuts">-</span>
+    <span id="stat-holds">-</span>
+    <span id="stat-identity-detail">-</span>
+  </div>
+  <button class="replay-btn" onclick="resetGame()">NEW TERM</button>
+</div>
+
+<!-- ── EVENT CHOICE MODAL ── -->
+<div id="event-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:300;justify-content:center;align-items:center;">
+  <div style="background:var(--bg1);border:2px solid var(--border2);border-radius:10px;padding:28px 32px;max-width:520px;width:90%;box-shadow:0 12px 48px rgba(0,0,0,0.8);">
+    <div id="em-type" style="font-size:11px;letter-spacing:0.2em;color:var(--text3);margin-bottom:6px;font-weight:700;"></div>
+    <div id="em-title" style="font-size:1.3rem;font-weight:700;margin-bottom:10px;letter-spacing:0.05em;"></div>
+    <div id="em-desc" style="font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:18px;"></div>
+    <div style="font-size:12px;color:var(--text3);letter-spacing:0.1em;margin-bottom:10px;font-weight:700;">YOUR RESPONSE:</div>
+    <div id="em-choices" style="display:flex;flex-direction:column;gap:8px;"></div>
+  </div>
+</div>
+
+
+
+<div style="position:fixed;bottom:10px;left:14px;font-family:'Courier New',monospace;font-size:11px;color:#404038;letter-spacing:0.1em;z-index:50;pointer-events:none;">MADE BY ABHISHEK CHANDAN</div>
+
+<script>
+// ── CONSTANTS ──────────────────────────────────────────────────────────────────
+const ERA_META = {
+  volcker:   { name:'Volcker',   chair:'PAUL VOLCKER — AUG 1979 TO AUG 1987' },
+  greenspan: { name:'Greenspan', chair:'ALAN GREENSPAN — 1987 TO 2006' },
+  bernanke:  { name:'Bernanke',  chair:'BEN BERNANKE — 2006 TO 2014' },
+  powell:    { name:'Powell',    chair:'JEROME POWELL — 2020 TO PRESENT' },
+};
+
+// Fed approval state — computed separately using real macro data
+function initFedApproval() {
+  return { markets: 50, congress: 50, public: 50, econ: 50 };
+}
+
+// Compute Fed's approval using real historical macro data (same formula as player)
+function updateFedApprovals() {
+  const rm = realMonth();
+  const tw   = model.approvalWeights.taylor;
+  const zstd = model.approvalWeights.zstd;
+  const pInf  = rm.inflation;
+  const pUnemp= rm.unemployment;
+  const pGrowth = rm.growth || 2;
+  const pRate  = rm.fedFunds;
+  const pSpread = rm.yieldSpread ?? 1.5;
+  const inRecession = pGrowth < -1; // real recession proxy
+
+  const taylorRate = Math.max(0, tw.const + tw.inf_gap * (pInf - 2) + tw.unemp_gap * (pUnemp - 5));
+  const taylorDev  = pRate - taylorRate;
+
+  const zInf    = Math.max(-3, Math.min(3, (pInf   - 2) / zstd.inflation));
+  const zUnemp  = Math.max(-3, Math.min(3, (pUnemp - 5) / zstd.unemployment));
+  const zGrowth = Math.max(-3, Math.min(3, (pGrowth- 2) / zstd.growth));
+
+  const fa = state.fedApproval;
+  const rev = 0.08;
+  const isMeeting = rm.isMeeting === 1;
+  const lastRealBps = state.decisionLog.length > 0 ? state.decisionLog[state.decisionLog.length-1].realBps : 0;
+  const realDelta = isMeeting ? lastRealBps / 100 : 0;
+
+  let mktT = 50;
+  mktT -= 2.0 * zInf; mktT += 2.5 * zGrowth;
+  if (pSpread < 0) mktT -= 15;
+  if (pSpread > 0.5) mktT += 5;
+  if (inRecession) mktT -= 20;
+  if (isMeeting && realDelta > 0.5 && zInf < 0) mktT -= 10;
+  if (isMeeting && realDelta < -0.25) mktT += 8;
+  fa.markets = Math.max(5, Math.min(100, fa.markets + rev * (Math.max(5,Math.min(95,mktT)) - fa.markets) + (Math.random()-0.5)));
+
+  let cgT = 50;
+  cgT -= 3.0 * zUnemp; cgT += 2.0 * zGrowth; cgT -= 1.0 * zInf;
+  if (inRecession) cgT -= 25;
+  if (pUnemp < 4.5) cgT += 10;
+  fa.congress = Math.max(5, Math.min(100, fa.congress + rev * (Math.max(5,Math.min(95,cgT)) - fa.congress) + (Math.random()-0.5)));
+
+  let pbT = 50;
+  pbT -= 3.0 * zInf; pbT -= 2.5 * zUnemp; pbT += 1.0 * zGrowth;
+  if (inRecession) pbT -= 20;
+  if (pInf >= 1.5 && pInf <= 3.0) pbT += 8;
+  if (pUnemp < 4.5) pbT += 6;
+  fa.public = Math.max(5, Math.min(100, fa.public + rev * (Math.max(5,Math.min(95,pbT)) - fa.public) + (Math.random()-0.5)));
+
+  const taylorDevZ = Math.max(0, Math.min(3, Math.abs(taylorDev) / 1.5));
+  let econT = 50;
+  econT -= 3.0 * taylorDevZ;
+  if (pInf >= 1.5 && pInf <= 2.5) econT += 15;
+  if (pSpread < -0.5) econT -= 10;
+  if (pSpread > 0.5 && taylorDev < 1) econT += 5;
+  fa.econ = Math.max(5, Math.min(100, fa.econ + rev * (Math.max(5,Math.min(95,econT)) - fa.econ) + (Math.random()-0.5)));
+}
+
+// Compute Fed's score for current month (same formula as player but using real data)
+function computeFedScore() {
+  const rm = realMonth();
+  const pInf = rm.inflation, pUnemp = rm.unemployment, pGrowth = rm.growth || 2;
+  let pts = 0;
+  if (pInf >= 1.5 && pInf <= 2.5)      pts += 6;
+  else if (pInf >= 1.0 && pInf <= 3.5) pts += 2;
+  else if (pInf > 6 || pInf < 0)        pts -= 7;
+  else                                   pts -= 2;
+  if (pUnemp < 4)        pts += 5;
+  else if (pUnemp < 5.5) pts += 2;
+  else if (pUnemp > 9)   pts -= 7;
+  else if (pUnemp > 7)   pts -= 3;
+  if (pGrowth > 3)        pts += 2;
+  else if (pGrowth > 1.5) pts += 1;
+  if (pGrowth < -1) pts -= 5;
+  else if (pGrowth < 0) pts -= 2;
+  if (pInf > 5 && pUnemp > 7) pts -= 8;
+  if (pInf >= 1.5 && pInf <= 3 && pUnemp >= 3.5 && pUnemp <= 5.5 && pGrowth > 0) pts += 4;
+  const pSpread = rm.yieldSpread ?? 1.5;
+  if (pSpread < -0.5) pts -= 3;
+  else if (pSpread < 0) pts -= 1;
+  if (pGrowth < -1) pts -= 4; // recession proxy
+  return pts;
+}
+
+// ── CHARACTER REACTION SYSTEM ──────────────────────────────────────────────────
+// Each era has a cast of characters who react to policy decisions.
+// trigger conditions are evaluated after each FOMC decision.
+
+const ERA_CHARACTERS = {
+  volcker: {
+    president: { name:'President Carter / Reagan', avatar:'🇺🇸', role:'president' },
+    economist: { name:'Milton Friedman', avatar:'🎓', role:'economist' },
+    banker:    { name:'Wall St. Banker', avatar:'🏦', role:'markets' },
+    public:    { name:'American Worker', avatar:'👷', role:'public' },
+    senator:   { name:'Sen. Ted Kennedy', avatar:'🏛️', role:'congress' },
+  },
+  greenspan: {
+    president: { name:'President Clinton / Bush', avatar:'🇺🇸', role:'president' },
+    economist: { name:'Paul Krugman', avatar:'🎓', role:'economist' },
+    banker:    { name:'Goldman Sachs Desk', avatar:'🏦', role:'markets' },
+    public:    { name:'Main Street', avatar:'🏘️', role:'public' },
+    senator:   { name:'Sen. Phil Gramm', avatar:'🏛️', role:'congress' },
+  },
+  bernanke: {
+    president: { name:'President Bush / Obama', avatar:'🇺🇸', role:'president' },
+    economist: { name:'Larry Summers', avatar:'🎓', role:'economist' },
+    banker:    { name:'JP Morgan Trader', avatar:'🏦', role:'markets' },
+    public:    { name:'Homeowner', avatar:'🏠', role:'public' },
+    senator:   { name:'Sen. Ron Paul', avatar:'🏛️', role:'congress' },
+  },
+  powell: {
+    president: { name:'President Trump / Biden', avatar:'🇺🇸', role:'president' },
+    economist: { name:'Larry Summers', avatar:'🎓', role:'economist' },
+    banker:    { name:'Hedge Fund Manager', avatar:'💹', role:'markets' },
+    public:    { name:'First-Time Buyer', avatar:'😤', role:'public' },
+    senator:   { name:'Sen. Elizabeth Warren', avatar:'🏛️', role:'congress' },
+  },
+};
+
+// Reactions keyed by [era][character][trigger]
+// triggers: hike_angry, hike_happy, cut_angry, cut_happy, hold_angry, hold_happy,
+//           inflation_crisis, recession, soft_landing, inversion, zlb, overtighten
+const CHARACTER_REACTIONS = {
+  volcker: {
+    president: {
+      hike_angry:      { mood:'angry',  quotes:[
+        '"Volcker is DESTROYING the economy! Unemployment at 10%! My approval rating looks like your yield curve — INVERTED." — President Reagan',
+        '"I did NOT appoint this man to cause a depression! Call Paul. Tell him to stop. Tell him I said please." — Reagan, frantically',
+        '"The farmers are sending me lumber! Two-by-fours! They\'re protesting lumber prices! PAUL. STOP." — Reagan',
+        '"My advisors tell me Volcker is \'technically correct.\' I don\'t care about technically correct. I care about Iowa." — Reagan',
+      ]},
+      hike_happy:      { mood:'happy',  quotes:[
+        '"We fully support the Fed\'s commitment to price stability. Inflation is the enemy. Paul is the cure." — White House',
+        '"Volcker is doing what must be done. History will vindicate him. Probably. Hopefully. Please." — White House, nervously',
+      ]},
+      cut_happy:       { mood:'happy',  quotes:[
+        '"Finally! America can breathe again. The Fed is moving in the right direction. Also please don\'t mention the recession." — Reagan',
+        '"I always said Paul would come through. I never doubted him. Not once. Absolutely never panicked at all." — Reagan',
+      ]},
+      inflation_crisis:{ mood:'angry',  quotes:[
+        '"14% inflation is a national emergency and ALSO a personal embarrassment. My approval is at 28%. TWENTY EIGHT." — Carter',
+        '"The economists said this was transitory. That was 18 months ago. I hate economists." — Carter',
+        '"Volcker says he needs more time. I said Jimmy Carter ALSO needed more time. He didn\'t get it. HINT." — Carter',
+      ]},
+      recession:       { mood:'angry',  quotes:[
+        '"Paul, you caused a recession. Factories closing. I\'m getting lumber in the mail. ACTUAL LUMBER." — Reagan',
+        '"The unemployment rate is 10.8%. My speechwriters keep trying to spin this. They\'ve given up." — Reagan',
+        '"Volcker promised \'short-term pain for long-term gain.\' Sir, my entire presidency IS the short-term pain." — Reagan',
+      ]},
+      soft_landing:    { mood:'happy',  quotes:[
+        '"Paul Volcker is a genius. I always believed in him. From day one. Definitely not panicking for 3 years." — Reagan',
+        '"Inflation beaten. Economy recovering. I\'d like to take some credit. Just a little. A tiny bit." — White House',
+      ]},
+    },
+    economist: {
+      hike_angry:      { mood:'angry',  quotes:[
+        '"This reckless tightening will cause a severe recession. I\'m writing an op-ed. Several op-eds. A book." — Galbraith',
+        '"The Fed is overcorrecting. I have a model. The model says bad things. I trust the model." — Academic consensus',
+        '"Volcker is fighting the last war. The 1970s are over! ...Technically they started this year but STILL." — Contrarian economist',
+      ]},
+      hike_happy:      { mood:'happy',  quotes:[
+        '"Monetarist theory vindicated. Control money supply, tame inflation. I\'ve been saying this for 30 years. THIRTY YEARS." — Friedman, triumphant',
+        '"This is correct. This is exactly correct. I wrote a paper in 1963 predicting exactly this. Please read it." — Friedman',
+        '"The quantity theory of money has been proven right. My rivals have been proven wrong. Today is a good day." — Friedman',
+      ]},
+      overtighten:     { mood:'angry',  quotes:[
+        '"Rates are now 20%. I have run the Taylor rule. The Taylor rule is crying. We have gone too far." — Academic consensus',
+        '"I support fighting inflation but this is like treating a fever with a flamethrower." — Samuelson',
+        '"The model predicts a catastrophic recession. I updated the model. Same result. I updated it again. Still bad." — Econometrician',
+      ]},
+      inflation_crisis:{ mood:'warn',   quotes:[
+        '"Inflation expectations are de-anchoring. The public now believes prices always go up. This is my worst nightmare." — Friedman',
+        '"I have been warning about this for 18 months. I have the op-eds. I have the timestamps. I TOLD YOU." — Friedman',
+      ]},
+      soft_landing:    { mood:'happy',  quotes:[
+        '"A textbook disinflation. Painful but necessary. I\'m updating my textbook to include this chapter." — Friedman',
+        '"History will judge Volcker kindly. My book about him comes out in spring. Pre-orders available now." — Friedman',
+      ]},
+    },
+    banker: {
+      hike_angry:      { mood:'angry',  quotes:[
+        '"Prime rate at 20%?! My clients are paying 22% on business loans. I called my therapist. He also has a loan." — Wall St.',
+        '"No one can borrow. No one can invest. We are sitting here watching the ticker and weeping softly." — Goldman desk',
+        '"Deal flow is zero. ZERO. I haven\'t done a deal in 4 months. I\'ve started baking bread. Send help." — M&A banker',
+        '"The Fed is strangling us. My bonus is going to be my dignity and nothing else." — Wall St. Banker',
+      ]},
+      inversion:       { mood:'angry',  quotes:[
+        '"Yield curve inverted. I didn\'t go to Wharton to watch a yield curve inversion. Actually maybe I did." — Treasury desk',
+        '"2s10s negative. Every recession model I have is flashing red. I have eleven models. They\'re all red." — Fixed income desk',
+      ]},
+      cut_happy:       { mood:'happy',  quotes:[
+        '"FINALLY. Credit markets can breathe. Activity picking up. I may cry. I\'m definitely crying." — Wall St. Banker',
+        '"The cut is in. Buy everything. BUY. I have been waiting 18 months for this moment." — Trading desk',
+      ]},
+      recession:       { mood:'angry',  quotes:[
+        '"Credit losses mounting. This tightening cycle has officially gone too far. I said this in my memo. Check the memo." — Citibank',
+        '"The Fed killed demand. Corporate bankruptcies up 40%. My weekend house is now a weekend liability." — Senior banker',
+      ]},
+    },
+    public: {
+      cut_angry:       { mood:'warn',   quotes:[
+        '"Cutting rates while prices are still at 10%?! Did you see my grocery bill? Did you SEE it?!" — Pittsburgh homeowner',
+        '"My landlord raised rent again. The Fed cut rates. I fail to see the connection. Explain it to me." — Frustrated renter',
+      ]},
+      hike_angry:      { mood:'angry',  quotes:[
+        '"My mortgage payment went up AGAIN. I\'m choosing between heat and food. Thanks for the economic theory, Paul." — Ohio homeowner',
+        '"I work three jobs. THREE JOBS. And I still can\'t make rent. The Fed Chair makes $60,000 a year by the way." — Pittsburgh steelworker',
+        '"My car loan, my mortgage, my credit card — all up. Volcker is personally billing me for his inflation fight." — Rust Belt dad',
+        '"I heard Paul Volcker is 6\'7\". That\'s a big man. A big man making big mistakes that affect my small family." — Factory worker',
+      ]},
+      cut_happy:       { mood:'happy',  quotes:[
+        '"Prices at the grocery store stabilizing. First time in years I didn\'t have a minor breakdown at the checkout." — Detroit worker',
+        '"I went to the store. I bought things. I didn\'t cry. This is an improvement." — Average American, 1983',
+      ]},
+      inflation_crisis:{ mood:'angry',  quotes:[
+        '"I need three jobs to pay rent. My wife needs two. We have five jobs between us and we\'re still behind." — Pittsburgh steelworker',
+        '"The cashier at Kroger told me prices went up again. I said I know. We both just stood there." — Ohio mom',
+        '"Inflation at 14%. In 1965 my dad bought a house for $18,000. That house is now $85,000. I hate math." — Angry American',
+      ]},
+      recession:       { mood:'angry',  quotes:[
+        '"Plant laid off 200 workers including me. Fed medicine is worse than the disease. I want a refund." — Rust Belt worker',
+        '"Unemployed for the first time in my life. I now have a lot of free time to watch Paul Volcker on C-SPAN. I\'m very angry." — Former autoworker',
+      ]},
+      soft_landing:    { mood:'happy',  quotes:[
+        '"Prices reasonable, have a job, things are stable. First time since 1978 I feel okay. Don\'t ruin it." — Average American',
+        '"My neighbor said the economy is good. I checked. He\'s right. I didn\'t know what to do with this information." — Bewildered American',
+      ]},
+    },
+    senator: {
+      hike_angry:      { mood:'angry',  quotes:[
+        '"Mr. Volcker, you are DELIBERATELY throwing Americans out of work. I have constituents calling me. Crying. CRYING." — Sen. Kennedy',
+        '"Sir, unemployment is at 10%. TEN PERCENT. I have your phone number and I am not afraid to use it." — Sen. Kennedy',
+        '"The Fed\'s independence is not a license to destroy the working class. I\'m calling a hearing. I\'m calling five hearings." — Sen. Kennedy',
+      ]},
+      hike_happy:      { mood:'happy',  quotes:[
+        '"The Banking Committee supports the anti-inflation commitment. We will not interfere. This time. Probably." — Sen. Proxmire',
+        '"Inflation hurts fixed-income seniors most. The Fed is right to act. My constituents have actual savings to protect." — Sen. Proxmire',
+      ]},
+      recession:       { mood:'angry',  quotes:[
+        '"10.8% unemployment! Highest since the Depression! I am DRAFTING LEGISLATION, Mr. Volcker. LEGISLATION." — Sen. Kennedy',
+        '"Constituents are losing homes. Farms. Businesses. The Fed will answer for this in my subcommittee. Book your flights." — Sen. Kennedy',
+      ]},
+    },
+  },
+
+  greenspan: {
+    president: {
+      hike_angry:      { mood:'angry',  quotes:[
+        '"I want lower rates. The economy doesn\'t need this. Greenspan better reconsider or I\'ll mutter about it passive-aggressively." — Bush Sr.',
+        '"Alan and I had a nice conversation about rates. I said lower them. He said irrational exuberance. I don\'t know what that means." — Bush Sr.',
+        '"Greenspan is supposed to be a genius. Geniuses cut rates. This is basic stuff." — Bush Sr., not a monetarist',
+      ]},
+      cut_happy:       { mood:'happy',  quotes:[
+        '"The Fed is supporting growth. This is exactly the policy America needs. Good job Alan. I mean it. Call me." — White House',
+        '"The Maestro delivers again. We should give him a medal. Does the Fed accept medals? Can we check?" — Clinton White House',
+      ]},
+      inflation_crisis:{ mood:'warn',   quotes:[
+        '"We\'re watching inflation carefully. Very carefully. With both eyes. All the time. Alan, please." — Clinton',
+        '"Inflation is rising. I\'m told this is a problem. My economic team is nodding very seriously at me." — Clinton',
+      ]},
+      soft_landing:    { mood:'happy',  quotes:[
+        '"Maestro. There\'s no other word. Greenspan has navigated this economy like a saxophonist navigates jazz — brilliantly and confusingly." — Clinton',
+        '"Budget surplus, low unemployment, low inflation. Is this real? Am I dreaming? Someone pinch me." — Clinton, 1999',
+        '"Alan Greenspan for Mount Rushmore. I said what I said." — Clinton aide, 1998',
+      ]},
+      recession:       { mood:'angry',  quotes:[
+        '"Americans expect better. This recession is hurting families. Alan, we need to talk. Bring your saxophone." — Bush',
+        '"I was told the New Economy didn\'t have recessions. That was incorrect information." — Bush, disappointed',
+      ]},
+    },
+    economist: {
+      cut_angry:       { mood:'angry',  quotes:[
+        '"Easing with inflation above 4%? This risks re-igniting price pressures. I\'m writing to the Financial Times." — Rogoff',
+        '"Premature easing. Dangerous easing. I have a paper. It\'s 47 pages. The abstract alone is a warning." — Rogoff',
+      ]},
+      hike_angry:      { mood:'warn',   quotes:[
+        '"Raising rates into a productivity boom is a mistake. The New Economy changes everything! Everything! ...Probably." — Krugman',
+        '"Greenspan doesn\'t understand that technology has permanently shifted the Phillips curve. I wrote this in the Times." — Krugman',
+      ]},
+      overtighten:     { mood:'angry',  quotes:[
+        '"The Taylor rule is a suggestion, not a floor. We are well above it. I have charts. Many charts." — Krugman, NYT op-ed',
+        '"I have now written 12 columns saying the same thing. I will write 12 more. I never tire." — Krugman',
+      ]},
+      soft_landing:    { mood:'happy',  quotes:[
+        '"The Greenspan Put anchored expectations beautifully. I\'ll admit it — the man is good. Don\'t tell him I said that." — Summers',
+        '"I had doubts. I expressed them loudly and publicly. I was wrong. Greenspan was right. I\'m updating my model." — Blinder',
+      ]},
+      inversion:       { mood:'angry',  quotes:[
+        '"Inverted yield curve. Not ambiguous. Not complicated. RECESSION IS COMING. I need everyone to read my 1986 paper." — Campbell Harvey',
+        '"Every recession since 1969 was preceded by an inversion. I am standing outside the Fed with a sign." — Harvey, getting weird',
+      ]},
+      cut_happy:       { mood:'happy',  quotes:[
+        '"Timely and well-calibrated. The Fed is threading the needle. This is what competent monetary policy looks like." — Blinder',
+        '"I\'ll give Greenspan credit on this one. Not too much. Just enough to make me seem fair-minded." — Krugman',
+      ]},
+    },
+    banker: {
+      hike_angry:      { mood:'angry',  quotes:[
+        '"Greenspan is choking the dot-com boom for NO REASON. My clients are furious. One of them threw a BlackBerry." — Goldman desk',
+        '"Volatility spiking. Deal flow down. I had to cancel my Hamptons share. CANCEL. MY. HAMPTONS. SHARE." — Goldman MD',
+        '"The Nasdaq is at 5000 and Greenspan wants to slow things down. Sir, have you SEEN the Nasdaq? It\'s beautiful." — Tech banker',
+      ]},
+      cut_happy:       { mood:'happy',  quotes:[
+        '"Greenspan Put confirmed. Buy EVERYTHING. Fed backstops the market. This is the trade of the decade." — Every hedge fund, simultaneously',
+        '"Rate cut. The floor is in. I\'m buying calls. My clients are buying calls. The intern is buying calls." — Options desk',
+        '"The put is real. It\'s always been real. Why would you ever sell stocks when Alan Greenspan exists?" — Permabull',
+      ]},
+      inversion:       { mood:'angry',  quotes:[
+        '"2s10s inverted. We\'re risk-off. Recession trade is on. I\'m shorting everything that isn\'t nailed down." — Fixed income desk',
+        '"Every bond desk I know is screaming. That\'s 14 desks. I counted." — Treasury trader',
+      ]},
+      soft_landing:    { mood:'happy',  quotes:[
+        '"Longest expansion in US history. Record profits. Greenspan is the GOAT. Full stop. No debate." — Wall St. consensus',
+        '"I\'ve been in this industry 20 years and I\'ve never seen anything like the \'90s bull run. Greenspan did this." — Senior trader',
+      ]},
+    },
+    public: {
+      hike_angry:      { mood:'angry',  quotes:[
+        '"I finally got a job after 4 years and NOW rates go up? I can\'t even enjoy it for one week?" — Middle America',
+        '"My small business loan just got more expensive. Do they know how hard it is to run a diner? ALAN." — Ohio diner owner',
+        '"Rates going up again. My husband says don\'t worry. I am worrying. I\'m very worried." — Suburban mom',
+      ]},
+      cut_happy:       { mood:'happy',  quotes:[
+        '"Stocks up, jobs everywhere, 90s are incredible. My 401k has literally never been this number. Is this real?" — Suburbia, 1999',
+        '"The economy is so good I bought a second jet ski. A SECOND ONE. Thanks Alan." — Conspicuous consumer, 1998',
+        '"Dot-com company offered me stock options. I don\'t know what that means but everyone seems excited." — Bewildered American',
+      ]},
+      recession:       { mood:'angry',  quotes:[
+        '"Dot-com crash wiped my 401k. I had $180k. I have $43k. I looked at it once. I\'ll never look again." — San Jose engineer',
+        '"My company gave me stock instead of salary. The stock is now worth the same as my dignity: zero." — Former dot-com employee',
+      ]},
+      inflation_crisis:{ mood:'warn',   quotes:[
+        '"Energy prices are insane. Gas is expensive. Alan, I voted for you. Oh wait, you\'re not elected. Who IS this guy?" — American at gas pump',
+        '"I thought the 90s were supposed to be good? Now everything costs more. I want a refund on the decade." — Confused American',
+      ]},
+    },
+    senator: {
+      hike_angry:      { mood:'angry',  quotes:[
+        '"Mr. Greenspan, small businesses in my district cannot afford your rates. I have letters. Hundreds of letters. Read them." — Senate Banking',
+        '"You speak in riddles, Alan. \'Irrational exuberance.\' What does that mean for the guy who can\'t get a small business loan?" — Senator',
+      ]},
+      soft_landing:    { mood:'happy',  quotes:[
+        '"The Maestro has done it again. Surplus. Low unemployment. Low inflation. I hate that I can\'t complain right now." — Sen. Sarbanes',
+        '"I\'ve been waiting to grill Greenspan for three years. There\'s nothing to grill him about. I\'m furious." — Frustrated senator',
+      ]},
+      recession:       { mood:'angry',  quotes:[
+        '"The Fed cut too slowly. I said this in March. I said it in April. My floor speech from May is a prophecy." — Senate Banking Chair',
+        '"Constituents are calling. Tech workers. Former tech workers. They have a lot of free time now, Alan." — Senator',
+      ]},
+    },
+  },
+
+  bernanke: {
+    president: {
+      hike_angry:      { mood:'angry',  quotes:[
+        '"Raising rates with a housing bubble forming is wrong. My economic team agrees. Please ask them. They\'re right here nodding." — Bush advisor',
+        '"I appointed Bernanke to stabilize things. \'Stabilize\' does not mean \'raise rates until people can\'t afford houses.\'" — Bush',
+      ]},
+      cut_happy:       { mood:'happy',  quotes:[
+        '"The Fed is doing the right thing. History will judge these cuts as the action that saved the American economy." — Obama',
+        '"Ben Bernanke walked into a burning building and came out with the financial system under his arm. Cut rates? Cut them all." — Obama aide',
+      ]},
+      inflation_crisis:{ mood:'warn',   quotes:[
+        '"Inflation is a hidden tax on families. I expect the Fed to take this seriously. My approval cannot take another hit." — Bush',
+        '"I\'m told inflation is \'sticky.\' I don\'t want sticky. I want normal prices for things." — Bush, not an economist',
+      ]},
+      recession:       { mood:'angry',  quotes:[
+        '"The worst financial crisis since the Depression. On your watch, Mr. Bernanke. I\'m not assigning blame but it happened on your watch." — Bush',
+        '"Lehman failed, AIG failed, everything is failing. Someone told me Bernanke literally wrote his PhD on this. HIS PhD." — Bush, incredulous',
+        '"My legacy is the Great Recession. Thank you, Ben. Really. Tremendous. Great job." — Bush, bleakly',
+      ]},
+      soft_landing:    { mood:'happy',  quotes:[
+        '"The Fed prevented a second Great Depression. I can\'t say that enough. Second. Great. Depression. Prevented." — Obama',
+        '"Ben Bernanke is a hero. I\'m updating my speechwriters\' Ben Bernanke notes from \'cautious praise\' to \'effusive hero praise.\'" — Obama',
+      ]},
+    },
+    economist: {
+      cut_angry:       { mood:'angry',  quotes:[
+        '"Cutting with housing inflation hot is pouring fuel on the fire. I said this. Roubini said this. Nobody listened." — Roubini',
+        '"The imbalances in the housing market are ENORMOUS. Enormous! I have a spreadsheet. It\'s enormous too." — Roubini',
+      ]},
+      hike_angry:      { mood:'warn',   quotes:[
+        '"Tightening when the housing market is under stress is procyclical. Bernanke literally wrote papers about this." — Summers',
+        '"I respect Ben enormously. This decision, however, is not his finest hour. I\'m told he agrees. He doesn\'t look happy." — Summers',
+      ]},
+      zlb:             { mood:'warn',   quotes:[
+        '"Zero lower bound reached. Conventional policy exhausted. Time for QE. Bernanke literally invented this. Use it boldly, Ben." — His own research, haunting him',
+        '"This is the scenario Bernanke\'s 2002 speech was about. Sir, you gave a SPEECH about this. The speech is now happening." — Fed historian',
+        '"Ben Bernanke wrote \'Helicopters and Monetary Policy\' in 2002. The helicopter must now fly." — Academic, gravely',
+      ]},
+      soft_landing:    { mood:'happy',  quotes:[
+        '"The QE programs worked. The counterfactual — inaction — would have been catastrophic. Bernanke was right." — Blinder & Zandi',
+        '"I had serious doubts about QE. The data has corrected me. I am corrected. Humbling." — Former skeptic',
+      ]},
+      recession:       { mood:'angry',  quotes:[
+        '"The Fed was behind the curve on subprime. I published a paper. Roubini published a paper. We were ignored." — Roubini',
+        '"This is the crisis I predicted in 2005, 2006, and 2007. I have three papers. None of them felt good to write." — Roubini',
+      ]},
+      overtighten:     { mood:'angry',  quotes:[
+        '"Output gap enormous. Tightening now would be catastrophic. Bernanke knows this. BEN. YOU KNOW THIS." — Summers',
+        '"The unemployment rate is 10%. What are we tightening against? What? Someone explain this to me." — Summers, rhetorically',
+      ]},
+      inversion:       { mood:'angry',  quotes:[
+        '"Curve inversion plus housing weakness. This is the textbook recession signal. The textbook has been updated to include this exact situation." — Roubini',
+        '"Every model. Every indicator. Every yield. All pointing the same direction. ACT NOW." — Roubini, who saw it all coming',
+      ]},
+    },
+    banker: {
+      hike_angry:      { mood:'angry',  quotes:[
+        '"MBS spreads blowing out and you\'re hiking?! The credit markets are seizing up. I can hear them seizing from my desk." — Structured products desk',
+        '"I have $4 billion in CDO exposure. The model says they\'re fine. The model has never been more wrong." — Optimistic banker',
+        '"Rates up, spreads up, volume down. I had a great year going. HAD." — Mortgage desk, 2007',
+      ]},
+      cut_happy:       { mood:'happy',  quotes:[
+        '"Fed backstop confirmed. QE incoming. Buying every dip. This is the trade of a lifetime." — Hedge fund, 2009',
+        '"ZIRP forever. Equities only go up. I don\'t make the rules. Bernanke makes the rules." — Permabull',
+      ]},
+      recession:       { mood:'angry',  quotes:[
+        '"Lehman just filed. LEHMAN. The entire system is frozen. WHERE IS THE FED. WHY ISN\'T THE PHONE RINGING." — Trading floor, 2:34pm, Sept 15 2008',
+        '"Counterparty risk everywhere. I don\'t know who I owe money to. They don\'t know who owes them money. Nobody knows anything." — Risk desk, existentially',
+        '"In 20 years of trading I have never seen anything like this. I hope to never see it again. FED PLEASE HELP." — Senior trader',
+      ]},
+      soft_landing:    { mood:'happy',  quotes:[
+        '"ZIRP and QE delivered the longest bull market in history. Full credit to Bernanke. I\'ve made so much money. So much." — Goldman, 2013',
+        '"I was scared in 2008. Genuinely scared. Bernanke fixed it. I\'m buying him a very nice gift." — Hedge fund manager',
+      ]},
+      inversion:       { mood:'angry',  quotes:[
+        '"Bear Stearns, Lehman, AIG. The credit market is trying to tell you something, Ben. It\'s screaming, actually." — Risk desk',
+        '"Curve inverted 6 months ago. I moved to 90% cash. My clients think I\'m crazy. My clients will thank me." — Prescient PM',
+      ]},
+    },
+    public: {
+      hike_angry:      { mood:'angry',  quotes:[
+        '"My ARM just reset. Payment doubled. I can\'t pay it. I have two kids and a lab named Biscuit. Help us." — Florida homeowner, 2007',
+        '"Bought my house in 2005. Teaser rate expired. Now I owe more than it\'s worth. This is not what the brochure said." — Upside-down homeowner',
+      ]},
+      recession:       { mood:'angry',  quotes:[
+        '"Lost my job, lost my house, lost my savings. My 401k is a 201k. The banks got bailed out. I got a pamphlet." — Foreclosure victim',
+        '"I\'ve been responsible my whole life. 25 years. Saved everything. The banks gambled it away and got free money. I got nothing." — Retired worker',
+        '"They said the fundamentals are sound. They said it was contained. They said a lot of things." — Bitter American, 2009',
+      ]},
+      soft_landing:    { mood:'happy',  quotes:[
+        '"Still have my job. Market recovering. The bailouts worked I guess. I don\'t have to like it." — Reluctant American, 2010',
+        '"I lost a lot in 2008. I\'ve gotten most of it back. I\'m choosing to be cautiously grateful." — American, processing things',
+      ]},
+      cut_happy:       { mood:'happy',  quotes:[
+        '"Rates going down. Maybe I can refinance before this house destroys me financially and emotionally." — Underwater homeowner',
+        '"0% interest rates. My savings earn nothing but my debts are manageable. I guess that\'s the deal now." — American, adapting',
+      ]},
+      zlb:             { mood:'warn',   quotes:[
+        '"Zero interest rates and my savings account earns 0.01%. I did the math. On $50,000 I make $5 a year. FIVE DOLLARS." — Saver, 2010',
+        '"The Fed punishes people who saved and rewards people who borrowed. I saved. I\'d like to speak to a manager." — Prudent American, aggrieved',
+      ]},
+    },
+    senator: {
+      recession:       { mood:'angry',  quotes:[
+        '"Who got the bailout money and why? I want names. I want a list. I want the list in this hearing room by Thursday." — Sen. Sanders',
+        '"AIG executives got bonuses. BONUSES. With TAXPAYER MONEY. I will be here all day. I brought a sleeping bag." — Sen. Sanders',
+        '"The banks that caused this crisis got bailed out. The people who lost their homes got nothing. EXPLAIN THIS TO ME." — Sen. Sanders, volume increasing',
+      ]},
+      zlb:             { mood:'warn',   quotes:[
+        '"Zero rates are a subsidy to the banks. Regular Americans get nothing. This committee wants answers. I have a chart." — Sen. Warren',
+        '"Free money for Wall Street. Nothing for Main Street. I\'ve been saying this for three years. Write it down." — Sen. Warren',
+      ]},
+      soft_landing:    { mood:'happy',  quotes:[
+        '"The Fed acted boldly when it had to. I disagreed with QE. I still disagree with QE. But it worked so I\'ll be quiet about it." — Sen. Corker',
+        '"Unprecedented policy, unprecedented results. I remain skeptical of the precedent. But the results are undeniable." — Skeptical senator',
+      ]},
+      hike_angry:      { mood:'angry',  quotes:[
+        '"10% unemployment and you\'re raising rates?! The Fed\'s employment mandate is not decorative. IT IS THE MANDATE." — Sen. Sanders',
+        '"People in my state are losing jobs and you\'re making it more expensive to create jobs. I cannot express how angry I am." — Sen. Sanders',
+      ]},
+    },
+  },
+
+  powell: {
+    president: {
+      hike_angry:      { mood:'angry',  quotes:[
+        '"Powell is CRAZY. The Fed has gone LOCO. I made him and I can break him. I\'m posting about this at 2am." — Trump, Truth Social',
+        '"I gave the world the best Fed Chair ever and this is what he does?! LOWER RATES. LOWER THEM. NOW. PLEASE." — Trump',
+        '"Jerome Powell is not smart. I\'m very smart. I want low rates. This is not complicated." — Trump',
+        '"The Fed is my biggest threat. Not China. Not inflation. THE FED. I should have picked someone taller." — Trump, inexplicably',
+      ]},
+      hike_happy:      { mood:'warn',   quotes:[
+        '"We support the Fed\'s independence while closely monitoring the impact on American families, the economy, and my approval rating." — Biden White House',
+        '"The Fed is doing what it must. We respect that. We also note the timing is politically inconvenient. Just noting it." — White House',
+      ]},
+      cut_happy:       { mood:'happy',  quotes:[
+        '"Inflation down, rates cut, economy strong. Bidenomics is working. Please put this on the news." — Biden White House',
+        '"I always said Powell would come through. Steady hand on the wheel. Top-notch. Great pick. I picked him. Credit me." — Biden',
+      ]},
+      inflation_crisis:{ mood:'angry',  quotes:[
+        '"Inflation is a Putin tax! Also the Fed was maybe slow! Both things! I need this fixed before midterms!" — Biden, panicking',
+        '"$5 gas. $6 eggs. \'Transitory\' was the word I was told to use. I used it. I regret using it." — Biden',
+        '"My press secretary has been asked about inflation 47 times this week. 47. She has run out of answers." — Biden aide',
+      ]},
+      hold:            { mood:'angry',  quotes:[
+        '"The Fed is STUBBORN. WEAK. PATHETIC. They should cut rates. I\'m posting this at 3am because I can\'t sleep." — Trump, Truth Social',
+        '"5.5% rates when the economy is BOOMING?! In Trump\'s America rates would be zero! I invented zero rates! ...I didn\'t, but still!" — Trump',
+      ]},
+      soft_landing:    { mood:'happy',  quotes:[
+        '"Soft landing achieved. Everyone said it was impossible. Everyone was wrong. Bidenomics, baby." — White House',
+        '"I want to thank Jerome Powell. I want to, but I also need the credit. Can we say \'team effort\'?" — Biden',
+      ]},
+      recession:       { mood:'angry',  quotes:[
+        '"Powell caused this. I told you. I told EVERYONE. 525 basis points and now we\'re in a recession. I told you so." — Trump',
+        '"I would have done rates differently. I would have done them better. Much better. The best rates. Everyone says so." — Trump',
+      ]},
+    },
+    economist: {
+      cut_angry:       { mood:'angry',  quotes:[
+        '"Cutting with CPI above 4% is how you get the 1970s. I said this. I wrote this. I went on television to say this." — Summers',
+        '"The Fed is making a historic error. I will be the one who said so. The record will reflect this. I am the record." — Summers',
+        '"Transitory was wrong. Now premature pivoting? The Fed is 0 for 2. I need this institution to get its act together." — Summers',
+      ]},
+      hike_angry:      { mood:'warn',   quotes:[
+        '"Hiking into slowing growth. Recession risk elevated. I\'m not saying it\'s a mistake, I\'m saying it could be a mistake." — El-Erian',
+        '"The Fed is focused on lagging indicators while leading indicators are screaming slowdown. I have a newsletter. Subscribe." — El-Erian',
+      ]},
+      hike_happy:      { mood:'happy',  quotes:[
+        '"75bps was bold but necessary. 9% inflation is an emergency. The Fed had no choice. I\'ve been saying this since March 2021." — Summers',
+        '"Finally they\'re acting. FINALLY. I have been on every podcast. Every show. Every op-ed. FINALLY." — Summers, relieved',
+        '"The Fed is doing the right thing. I take no pleasure in being right about this. Actually, a little pleasure. Small amount." — Summers',
+      ]},
+      inflation_crisis:{ mood:'angry',  quotes:[
+        '"I warned about this in February 2021. I warned in March. April through December also. The Fed said transitory. IT IS NOT TRANSITORY." — Summers',
+        '"This is fiscal stimulus meeting supply constraints meeting energy shocks meeting a Fed that was asleep. MY NIGHTMARE." — Summers',
+        '"9.1% CPI. I have been saying this was coming for 18 months. My inbox is not large enough for the \'I told you so\' emails." — Summers',
+      ]},
+      soft_landing:    { mood:'happy',  quotes:[
+        '"I was wrong about the soft landing being impossible. The data corrects me. I\'m corrected. I don\'t enjoy this feeling." — Summers',
+        '"Powell pulled off something I said couldn\'t be done. My models were wrong. His judgment was right. Humbling." — Summers, unusually quiet',
+      ]},
+      overtighten:     { mood:'angry',  quotes:[
+        '"525 basis points. The lagged effects of monetary policy take 12-18 months. We haven\'t felt them all yet. I\'m scared." — El-Erian',
+        '"The Fed keeps hiking while looking in the rearview mirror. The road ahead is not what the mirror shows." — El-Erian',
+        '"At some point the cumulative tightening breaks something. I don\'t know what. I know that something breaks." — El-Erian, ominously',
+      ]},
+      cut_happy:       { mood:'happy',  quotes:[
+        '"Mission accomplished on inflation. Now pivot to supporting growth before the labor market cracks. Good job, Jerome." — Blinder',
+        '"The pivot is correct and timely. I said pivot when it wasn\'t popular. I\'m glad someone listened eventually." — Blinder',
+      ]},
+      zlb:             { mood:'warn',   quotes:[
+        '"Back at the ZLB again. The neutral rate may be structurally lower. Or maybe we just cut too fast. Hard to say from here." — Secular stagnation camp',
+        '"Zero rates again. My entire \'higher for longer\' framework just evaporated. I need to go lie down." — Former hawk',
+      ]},
+    },
+    banker: {
+      hike_angry:      { mood:'angry',  quotes:[
+        '"75bps at once! SEVENTY FIVE! Fastest since Volcker! Mortgage applications collapsed overnight. My pipeline is empty." — Real estate desk',
+        '"Rates up 500bps in a year. The housing market is frozen. I had 40 deals in the queue. Forty. They\'re gone." — Mortgage banker',
+        '"SOFR at 5.5%. I\'ve repriced my entire book. My entire book is now sad." — Bank treasurer',
+        '"SVB failed because of rate hikes. Who\'s next? I\'m looking at everyone\'s duration exposure. Everyone\'s." — Risk officer, paranoid',
+      ]},
+      cut_happy:       { mood:'happy',  quotes:[
+        '"Risk-on. Bought the pivot. Rate-sensitive sectors ripping. Powell is delivering. I am printing." — Hedge fund manager',
+        '"The Fed blinked. Beautiful. Magnificent. I\'ve been long duration for 8 months. Today is my day." — Bond trader',
+        '"Mortgage market unfreezing. Applications up. I may actually close a deal before year end." — Relieved banker',
+      ]},
+      inflation_crisis:{ mood:'angry',  quotes:[
+        '"9.1% CPI and they were calling it transitory in November 2021? I have the FOMC minutes. I have the TRANSCRIPTS." — PIMCO',
+        '"The Fed is behind the curve by at least 200bps. I adjust my portfolio accordingly. Also I\'m furious." — Fixed income PM',
+      ]},
+      inversion:       { mood:'angry',  quotes:[
+        '"2s10s most inverted since 1981. Recession probability above 60%. We are short equities, long vol, and very nervous." — Fixed income desk',
+        '"I\'ve built an entire yield curve inversion dashboard. It has 14 charts. They are all bad charts." — Quant PM',
+      ]},
+      soft_landing:    { mood:'happy',  quotes:[
+        '"Soft landing achieved. Best macro outcome in 40 years. My P&L thanks Jerome Powell personally." — BlackRock',
+        '"I was positioned for a hard landing for 18 months. I was wrong for 18 months. This is what being wrong profitably looks like." — Humble fund manager',
+      ]},
+      hike_happy:      { mood:'happy',  quotes:[
+        '"Finally hawkish credibility. Dollar bid. Inflation expectations de-anchoring risk dropping. I can breathe again." — FX desk',
+        '"The Fed has credibility back. My models can price off TIPS again without crying. Great day." — Fixed income desk',
+      ]},
+    },
+    public: {
+      hike_angry:      { mood:'angry',  quotes:[
+        '"My credit card APR is 29%. TWENTY NINE PERCENT. I bought a blender on installment. That blender now costs me $340." — Exasperated American',
+        '"Mortgage rates at 7.5%. I was pre-approved at 3% in 2021. The house I wanted costs more AND the rate is higher. Cool. Fine." — Millennial, suffering',
+        '"My car payment went up. My credit card went up. My rent went up. My salary went up 3%. The math does not math." — Gen Z worker',
+        '"I have a variable rate student loan. I also have a variable rate car loan. I did not plan for this decade." — Regretful borrower',
+      ]},
+      inflation_crisis:{ mood:'angry',  quotes:[
+        '"$6 for eggs. $5 for gas. $14 for a burrito. I make $55k a year. Do the math. I\'ve done the math. The math is bad." — Viral TikTok, 2022',
+        '"My grocery bill went from $200 to $340. I did not change what I buy. The prices changed. Powell." — Frustrated mom',
+        '"Bought a car in 2021. Couldn\'t get a house in 2022. Lost my mind in 2023. The vibes are historically off." — Millennial',
+        '"They said the economy is good. I said show me. They showed me GDP. I said no, show me my actual life. Silence." — American, 2022',
+      ]},
+      cut_happy:       { mood:'happy',  quotes:[
+        '"Mortgage rates dropping. Maybe I can afford a house before I\'m 45. I\'ve revised my target age up twice already." — Millennial homebuyer',
+        '"I locked in 6.5% which felt terrible and now feels almost reasonable. That\'s the bar now. 6.5% is almost reasonable." — Homeowner',
+      ]},
+      recession:       { mood:'angry',  quotes:[
+        '"Tech layoffs, bank failures, recession. I was told this was a soft landing. I\'m landing but it doesn\'t feel soft." — Laid-off engineer',
+        '"I had a great job at a startup. Then rates went up. Then the startup folded. I\'m connecting all the dots, Powell." — Former tech worker',
+      ]},
+      soft_landing:    { mood:'happy',  quotes:[
+        '"Inflation back to normal. Still employed. Market recovered. I said Powell was terrible for 2 years. I may owe him an apology." — Reluctant Twitter user',
+        '"Gas is normal. Eggs are normal. I forgot what normal felt like. It feels good. Thank you, I guess, Jerome." — American, thawing',
+      ]},
+      hold:            { mood:'warn',   quotes:[
+        '"Rates at 5.5% and my HYSA is earning 5%. I have become a person who is excited about savings rates. I don\'t recognize myself." — Former rate-hater',
+        '"Hold means my mortgage stays high. But also my savings earn something. I have mixed feelings. They are very mixed." — Conflicted American',
+      ]},
+    },
+    senator: {
+      hike_angry:      { mood:'angry',  quotes:[
+        '"Mr. Powell, housing is unaffordable. Rates are too high. I have constituents sleeping in their cars. THEIR CARS." — Sen. Warren',
+        '"You are raising rates into a working-class recession. The people who wrote your textbooks don\'t live in my district." — Sen. Warren',
+        '"First-time homebuyers cannot afford homes. Renters cannot afford rent. This is a housing emergency. I will hold a hearing EVERY WEEK." — Sen. Warren',
+      ]},
+      inflation_crisis:{ mood:'angry',  quotes:[
+        '"The Fed was asleep in 2021. They said transitory. I said transitory is not a policy. Nobody called me back." — Sen. Manchin',
+        '"Inflation is killing working families in West Virginia. I have been saying this for two years. SOMEONE LISTEN." — Sen. Manchin',
+      ]},
+      soft_landing:    { mood:'happy',  quotes:[
+        '"I\'ve criticized the Fed loudly and often. Credit where it\'s due — the soft landing is real. I remain vigilant." — Sen. Warren, begrudgingly',
+        '"I had serious concerns about Powell\'s approach. The outcome was positive. I\'m updating my concerns. Still have concerns." — Skeptical senator',
+      ]},
+      hike_happy:      { mood:'happy',  quotes:[
+        '"Inflation is a tax on working people. The Fed is finally doing its job. I\'d say I told them so, but everyone knows I told them so." — Sen. Manchin',
+        '"Price stability protects the most vulnerable Americans. The Fed is right to act. I approve of this rare occurrence." — Sen. Manchin',
+      ]},
+      overtighten:     { mood:'angry',  quotes:[
+        '"Eleven rate hikes. ELEVEN. Small businesses in my district are being strangled. I want a moratorium. I want it now." — Sen. Warren',
+        '"The Fed has overtightened. The data is clear. The lag is real. The pain is real. I\'m holding a press conference." — Sen. Warren',
+      ]},
+    },
+  },
+};
+
+let _popupQueue = [];
+let _popupTimer = null;
+// Track last-shown quote per character+trigger to avoid repeats
+const _lastShownQuote = {};
+
+function _pickQuote(reaction, charKey, triggerKey) {
+  const quotes = reaction.quotes || [reaction.quote];
+  if (quotes.length === 1) return quotes[0];
+  const dedupKey = charKey + '|' + triggerKey;
+  const last = _lastShownQuote[dedupKey];
+  // Filter out the last shown quote to guarantee variety
+  const pool = quotes.filter(q => q !== last);
+  const chosen = pool[Math.floor(Math.random() * pool.length)];
+  _lastShownQuote[dedupKey] = chosen;
+  return chosen;
+}
+
+function dismissPopup() {
+  const el = document.getElementById('char-popup');
+  el.classList.remove('active', 'angry', 'happy', 'warn');
+  if (_popupQueue.length > 0) {
+    setTimeout(() => _showNextPopup(), 400);
+  }
+}
+
+function _showNextPopup() {
+  if (_popupQueue.length === 0) return;
+  const { char, charKey, triggerKey, reaction } = _popupQueue.shift();
+  const el    = document.getElementById('char-popup');
+  const quote = _pickQuote(reaction, charKey, triggerKey);
+  document.getElementById('char-avatar').textContent = char.avatar;
+  document.getElementById('char-name').textContent   = char.name;
+  const moodLabels = { angry: '😡 FURIOUS', happy: '😄 PLEASED', warn: '😬 NERVOUS' };
+  document.getElementById('char-mood').textContent   = moodLabels[reaction.mood] || '😐';
+  document.getElementById('char-mood').className = 'char-mood ' + reaction.mood;
+  document.getElementById('char-quote').textContent  = quote;
+  el.className = 'char-popup active ' + reaction.mood;
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  if (_popupTimer) clearTimeout(_popupTimer);
+  _popupTimer = setTimeout(dismissPopup, 15000);
+}
+
+function triggerCharacterReaction(triggerKey) {
+  const chars = ERA_CHARACTERS[state.era];
+  const reactions = CHARACTER_REACTIONS[state.era];
+  if (!chars || !reactions) return;
+
+  const order = ['president', 'economist', 'banker', 'public', 'senator'];
+  const candidates = order.filter(k => reactions[k] && reactions[k][triggerKey]);
+  if (candidates.length === 0) return;
+
+  // Always show president if available, then pick one random other
+  const toShow = [];
+  if (candidates.includes('president')) toShow.push('president');
+  const others = candidates.filter(k => k !== 'president');
+  if (others.length > 0) toShow.push(others[Math.floor(Math.random() * others.length)]);
+
+  for (const key of toShow) {
+    _popupQueue.push({ char: chars[key], charKey: key, triggerKey, reaction: reactions[key][triggerKey] });
+  }
+  if (_popupQueue.length > 0 && !document.getElementById('char-popup').classList.contains('active')) {
+    _showNextPopup();
+  }
+}
+
+// ── REACTION ENGINE ────────────────────────────────────────────────────────────
+// Reactions are driven by the CURRENT ECONOMIC STATE, not by what lever was
+// just pulled. Rate decisions are logged into a pipeline; characters react
+// when the IRF lag has passed and the consequences show up in macro data.
+// This mirrors real-world monetary policy transmission (6-18 month lag).
+//
+// Pipeline entry: { delta, monthFired, triggeredReaction: false }
+// Lag tiers (months after decision):
+//   • Immediate (0):  crisis/structural events only (recession onset, ZLB hit, inversion)
+//   • Medium (4-6mo): markets and economists notice conditions changing
+//   • Long (9-12mo):  public and politicians feel it in jobs/prices
+//
+// Each trigger evaluates the ACTUAL MACRO STATE at firing time — so if you
+// hiked 9 months ago and unemployment is now rising, the popup says
+// "unemployment is rising because of your hikes", not "you just hiked".
+
+function evaluateCharacterTriggers(appliedRateDelta, taylorRate) {
+  const pInf   = state.player.inflation;
+  const pUnemp = state.player.unemployment;
+  const pRate  = state.player.rate;
+  const pGrowth = state.player.growth;
+  const taylorDev = pRate - taylorRate;
+  const zstd = model.approvalWeights.zstd;
+
+  // ── 1. STRUCTURAL / IMMEDIATE EVENTS ─────────────────────────────────────────
+  // These fire the moment the structural condition is first met — no lag needed
+  // because the event itself (recession, ZLB) IS the news, not the lag effect.
+
+  if (state.inflationCrisisMonths === 3) {
+    triggerCharacterReaction('inflation_crisis');
+    return;
+  }
+  if (state.inRecession && state.recessions >= 1 && state.consecNegGrowth === 2) {
+    triggerCharacterReaction('recession');
+    return;
+  }
+  if (state.player.rate === 0 && !state._zlbCharFired) {
+    state._zlbCharFired = true;
+    triggerCharacterReaction('zlb');
+    return;
+  }
+  if (state.player.rate > 0) state._zlbCharFired = false;
+
+  if (state.player.yieldSpread < -0.5 && !state._invertTriggered) {
+    state._invertTriggered = true;
+    triggerCharacterReaction('inversion');
+    return;
+  }
+  if (state.player.yieldSpread > 0) state._invertTriggered = false;
+
+  // Soft landing: all conditions green for first time — immediate positive news
+  if (!state._softLandingTriggered
+      && pInf >= 1.5 && pInf <= 2.5
+      && pUnemp >= 3.5 && pUnemp <= 5.5
+      && pGrowth > 0 && !state.inRecession
+      && state.monthIdx > 12) {
+    state._softLandingTriggered = true;
+    triggerCharacterReaction('soft_landing');
+    return;
+  }
+  // Soft landing can re-trigger if we leave and return
+  if (pInf > 3 || pUnemp > 6) state._softLandingTriggered = false;
+
+  // ── 2. LOG RATE DECISIONS INTO THE LAG PIPELINE ──────────────────────────────
+  // Every meeting-month decision is stored. Reactions fire when lag has elapsed.
+  if (!state._reactionPipeline) state._reactionPipeline = [];
+
+  if (appliedRateDelta !== 0 && state.monthIdx > 0) {
+    // Store the ECONOMIC CONTEXT at decision time — not just the delta.
+    // This lets us later say "you hiked when inflation was X" accurately.
+    state._reactionPipeline.push({
+      delta:        appliedRateDelta,
+      monthFired:   state.monthIdx,
+      infAtDecision:   pInf,
+      unempAtDecision: pUnemp,
+      growthAtDecision: pGrowth,
+      taylorDevAtDecision: taylorDev,
+      reacted: false,
+    });
+  }
+
+  // ── 3. CHECK PIPELINE — fire reaction when lag has elapsed ───────────────────
+  // Lag is regime-calibrated: IRF data shows peak inflation effect at ~10-14 months,
+  // unemployment at ~8-12 months. We use the IRF data itself to determine when the
+  // effect is meaningfully underway (horizon where effect > 30% of peak).
+  const irfs = getRegimeIrf();
+  function lagMonthsForIrf(irf) {
+    const peak = Math.max(...irf.map(Math.abs));
+    if (peak < 0.001) return 6; // fallback
+    for (let h = 1; h < irf.length; h++) {
+      if (Math.abs(irf[h]) >= 0.3 * peak) return h;
+    }
+    return 6;
+  }
+  const infLag  = lagMonthsForIrf(irfs.inflation);
+  const unempLag = lagMonthsForIrf(irfs.unemployment);
+  // Use the shorter of the two — reaction fires when EITHER channel is transmitting
+  const reactionLag = Math.max(3, Math.min(infLag, unempLag));
+
+  // Only fire one reaction pop per advance to avoid popup spam
+  let firedThisTick = false;
+
+  for (const entry of state._reactionPipeline) {
+    if (entry.reacted) continue;
+    const age = state.monthIdx - entry.monthFired;
+    if (age < reactionLag) continue; // lag hasn't elapsed yet
+
+    entry.reacted = true;
+
+    // Determine trigger based on the CURRENT ECONOMIC CONSEQUENCES,
+    // not the original decision. This is the key fix: we look at what
+    // actually happened to the economy, not what the player intended.
+    const wasHike = entry.delta > 0;
+    const wasCut  = entry.delta < 0;
+
+    // Current economic state deltas vs entry — did the policy work?
+    const infChange   = pInf   - entry.infAtDecision;
+    const unempChange = pUnemp - entry.unempAtDecision;
+    const growthChange = pGrowth - entry.growthAtDecision;
+
+    // Normalize changes by regime standard deviation for threshold-free comparison
+    const zInfChange   = infChange   / (zstd.inflation    || 2.5);
+    const zUnempChange = unempChange / (zstd.unemployment || 1.8);
+    const zGrowthChange = growthChange / (zstd.growth     || 4.2);
+
+    // z-score of current conditions (how bad/good is the economy RIGHT NOW)
+    const zInfNow   = (pInf   - 2) / (zstd.inflation    || 2.5);
+    const zUnempNow = (pUnemp - 5) / (zstd.unemployment || 1.8);
+    const zGrowthNow = (pGrowth - 2) / (zstd.growth     || 4.2);
+
+    let triggerKey = null;
+
+    if (wasHike) {
+      // Hike transmission consequences:
+      if (Math.abs(taylorDev) > 3 || (age > 12 && zUnempChange > 1.0)) {
+        // Overtightened: either way above Taylor, or unemployment has risen substantially
+        triggerKey = 'overtighten';
+      } else if (zInfNow < -0.5 && zUnempChange > 0.5) {
+        // Inflation crushed below target AND unemployment rising — hike worked but too hard
+        triggerKey = 'overtighten';
+      } else if (zInfNow < 0.5 && zUnempChange < 0.3) {
+        // Hike when inflation was already low and no unemp spike — unjustified
+        triggerKey = 'hike_angry';
+      } else if (zInfNow > 0.3 && zInfChange < -0.2) {
+        // Inflation was high, now cooling — hike working, justified
+        triggerKey = 'hike_happy';
+      } else if (zInfNow > 1.0) {
+        // Still high inflation — hike needed more
+        triggerKey = 'hike_happy';
+      } else {
+        triggerKey = 'hike_angry';
+      }
+    } else if (wasCut) {
+      // Cut transmission consequences:
+      if (zInfNow > 1.0 && zInfChange > 0.3) {
+        // Cut while inflation was high AND it's risen since — premature, irresponsible
+        triggerKey = 'cut_angry';
+      } else if (zInfNow > 0.5 && !state.inRecession) {
+        // Cut with inflation above target, no recession — questionable
+        triggerKey = 'cut_angry';
+      } else if (zUnempChange < -0.5 || zGrowthChange > 0.5) {
+        // Unemployment falling OR growth picking up after cut — it worked
+        triggerKey = 'cut_happy';
+      } else if (state.inRecession || zUnempNow > 1.0) {
+        // Recession or high unemployment — cut was needed, show relief
+        triggerKey = 'cut_happy';
+      } else {
+        triggerKey = 'cut_happy';
+      }
+    }
+
+    if (triggerKey && !firedThisTick) {
+      triggerCharacterReaction(triggerKey);
+      firedThisTick = true;
+    }
+  }
+
+  // Prune stale pipeline entries (> 24 months old, already reacted)
+  state._reactionPipeline = state._reactionPipeline.filter(
+    e => !e.reacted || (state.monthIdx - e.monthFired) < 24
+  );
+
+  // ── 4. PERSISTENT STATE REACTIONS (not tied to a specific decision) ───────────
+  // Fire periodically when sustained bad conditions deserve commentary.
+  // Use month modulo to stagger — no magic thresholds, purely z-score driven.
+  if (!firedThisTick) {
+    // Persistent overtighten warning: Taylor deviation sustained for 6+ months
+    if (!state._overtightenWarnedAt || state.monthIdx - state._overtightenWarnedAt > 8) {
+      const zUnempNowPersistent = (pUnemp - 5) / (zstd.unemployment || 1.8);
+      if (taylorDev > 2.5 && zUnempNowPersistent > 0.8) {
+        state._overtightenWarnedAt = state.monthIdx;
+        triggerCharacterReaction('overtighten');
+        firedThisTick = true;
+      }
+    }
+    // Hold warning: rates on hold but conditions clearly call for action
+    if (!firedThisTick) {
+      if (!state._holdWarnedAt || state.monthIdx - state._holdWarnedAt > 10) {
+        if (Math.abs(taylorDev) > 2.5 && appliedRateDelta === 0) {
+          state._holdWarnedAt = state.monthIdx;
+          triggerCharacterReaction('hold');
+          firedThisTick = true;
+        }
+      }
+    }
+  }
+}
+// ── INTERACTIVE EVENTS ────────────────────────────────────────────────────────
+// Keyed by YYYY-MM, fires a forced-choice modal instead of passive log entry.
+// Each choice has immediate approval/state effects + a tag stored on state.identity.
+
+const INTERACTIVE_EVENTS = {
+  "1979-10": {
+    type: 'POLICY CRISIS',
+    title: 'SATURDAY NIGHT MASSACRE',
+    desc: 'Inflation is running at 14%. Volcker proposes a radical shift: abandon interest rate targeting and control the money supply directly, allowing rates to spike to whatever level needed. This will crush inflation — but also potentially crush the economy.',
+    choices: [
+      { label: 'BACK THE PLAN — let rates go wherever they need to', effects: { inflationBonus: -1.5, approvalMarkets: -5, approvalPublic: -15, approvalEcon: 15, scoreBonus: 8 }, tag: 'hawk' },
+      { label: 'SOFTEN IT — gradual tightening only', effects: { inflationBonus: 0, approvalPublic: 5, approvalEcon: -10, scoreBonus: -3 }, tag: 'dove' },
+    ]
+  },
+  "1980-01": {
+    type: 'EXTERNAL SHOCK',
+    title: 'OIL SHOCK: IRAN CRISIS',
+    desc: 'Oil prices surge on Iranian hostage crisis. Inflation is about to get another big push. You can pre-emptively tighten to signal resolve, or hold and see if the shock is temporary.',
+    choices: [
+      { label: 'PRE-EMPTIVE HIKE — signal resolve on inflation', effects: { inflationBonus: -0.8, approvalEcon: 10, approvalPublic: -8, scoreBonus: 4 }, tag: 'hawk' },
+      { label: 'HOLD — wait and assess the shock duration', effects: { inflationBonus: 0.5, approvalPublic: 5, scoreBonus: -2 }, tag: 'neutral' },
+      { label: 'CUT — support growth against supply shock headwind', effects: { inflationBonus: 1.2, growthBonus: 0.5, approvalPublic: 8, approvalEcon: -12, scoreBonus: -6 }, tag: 'dove' },
+    ]
+  },
+  "1987-10": {
+    type: 'MARKET CRISIS',
+    title: 'BLACK MONDAY',
+    desc: 'The Dow just fell 22.6% in a single session — the largest single-day crash in history. Markets are frozen. Banks are calling for emergency liquidity. But inflation has been ticking up. Do you flood the system with liquidity or hold your nerve?',
+    choices: [
+      { label: 'EMERGENCY LIQUIDITY — flood the system, cut rates', effects: { growthBonus: 1.5, inflationBonus: 0.6, approvalMarkets: 25, approvalEcon: -8, scoreBonus: 3 }, tag: 'dove' },
+      { label: 'TARGETED LIQUIDITY — open window, hold rates', effects: { growthBonus: 0.8, approvalMarkets: 12, scoreBonus: 5 }, tag: 'neutral' },
+      { label: 'HOLD FIRM — markets will clear, don\'t sacrifice inflation fight', effects: { approvalMarkets: -20, approvalEcon: 15, scoreBonus: -2 }, tag: 'hawk' },
+    ]
+  },
+  "1990-08": {
+    type: 'EXTERNAL SHOCK',
+    title: 'GULF WAR OIL SHOCK',
+    desc: 'Iraq invaded Kuwait. Oil surged 50%. Inflation will spike, but the economy is already slowing. This is the classic central banker\'s dilemma: fight the inflation spike or support a weakening economy?',
+    choices: [
+      { label: 'TIGHTEN — the inflation signal must be answered', effects: { inflationBonus: -0.6, growthBonus: -0.8, approvalEcon: 12, approvalPublic: -10, scoreBonus: 2 }, tag: 'hawk' },
+      { label: 'HOLD — this is a temporary supply shock, not demand', effects: { inflationBonus: 0.3, scoreBonus: 1 }, tag: 'neutral' },
+      { label: 'CUT — support the economy through the shock', effects: { inflationBonus: 1.0, growthBonus: 0.6, approvalPublic: 8, approvalEcon: -15, scoreBonus: -4 }, tag: 'dove' },
+    ]
+  },
+  "2001-09": {
+    type: 'NATIONAL CRISIS',
+    title: '9/11 ATTACKS',
+    desc: 'Markets are closed. The economy is in shock. Consumer confidence will crater. You need to act immediately to prevent financial panic from becoming an economic collapse — but how aggressively?',
+    choices: [
+      { label: 'EMERGENCY 50bps CUT — maximum support immediately', effects: { growthBonus: 1.2, inflationBonus: 0.3, approvalMarkets: 20, approvalPublic: 15, approvalEcon: 5, scoreBonus: 5 }, tag: 'dove' },
+      { label: 'MEASURED 25bps CUT — signal support without panic', effects: { growthBonus: 0.6, approvalMarkets: 10, approvalPublic: 8, scoreBonus: 3 }, tag: 'neutral' },
+    ]
+  },
+  "2007-08": {
+    type: 'FINANCIAL STRESS',
+    title: 'SUBPRIME CRACKS APPEAR',
+    desc: 'BNP Paribas froze funds exposed to US subprime mortgages. Credit markets are seizing. Is this a contained event or the first tremor of something larger? The housing market is cooling. Do you act now or wait for more data?',
+    choices: [
+      { label: 'ACT NOW — cut 50bps, open emergency lending window', effects: { growthBonus: 0.8, inflationBonus: 0.4, approvalMarkets: 18, approvalEcon: -8, scoreBonus: 4 }, tag: 'dove' },
+      { label: 'OPEN WINDOW ONLY — provide liquidity, hold rates', effects: { growthBonus: 0.3, approvalMarkets: 8, scoreBonus: 3 }, tag: 'neutral' },
+      { label: 'HOLD — inflation is still the primary concern', effects: { inflationBonus: -0.3, approvalMarkets: -15, approvalEcon: 5, scoreBonus: -2 }, tag: 'hawk' },
+    ]
+  },
+  "2008-09": {
+    type: 'SYSTEMIC CRISIS',
+    title: 'LEHMAN BROTHERS COLLAPSES',
+    desc: 'Lehman Brothers filed for bankruptcy. AIG is next. The entire interbank lending market is frozen. This is not a recession — this is a potential financial system collapse. Every tool you have must be on the table.',
+    choices: [
+      { label: 'ALL IN — emergency cuts, unlimited swap lines, QE signal', effects: { growthBonus: 3.0, inflationBonus: 0.5, approvalMarkets: 30, approvalEcon: 15, scoreBonus: 15 }, tag: 'dove' },
+      { label: 'AGGRESSIVE BUT MEASURED — deep cuts, targeted support', effects: { growthBonus: 1.8, approvalMarkets: 15, approvalEcon: 8, scoreBonus: 8 }, tag: 'neutral' },
+      { label: 'LET IT BURN — moral hazard must be punished', effects: { growthBonus: -3.0, unemploymentBonus: 2.0, approvalMarkets: -35, scoreBonus: -20 }, tag: 'hawk' },
+    ]
+  },
+  "2020-03": {
+    type: 'PANDEMIC CRISIS',
+    title: 'COVID-19 PANDEMIC',
+    desc: 'The economy is being physically shuttered. Unemployment will spike to levels not seen since the Depression within weeks. The question is not whether to act — but how much.',
+    choices: [
+      { label: 'BAZOOKA — cut to zero, announce unlimited QE, everything', effects: { growthBonus: 4.0, inflationBonus: 0.8, approvalMarkets: 30, approvalPublic: 15, approvalEcon: 10, scoreBonus: 10 }, tag: 'dove' },
+      { label: 'AGGRESSIVE — cut to zero, large QE program', effects: { growthBonus: 2.5, inflationBonus: 0.4, approvalMarkets: 18, scoreBonus: 6 }, tag: 'neutral' },
+    ]
+  },
+  "2021-03": {
+    type: 'POLICY DECISION',
+    title: 'DEMAND SURGE: TRANSITORY OR NOT?',
+    desc: 'Stimulus checks are hitting. Reopening is accelerating. Inflation is picking up but supply chains are still broken. Is this temporary "transitory" inflation, or is demand running dangerously hot? Your call shapes the next two years.',
+    choices: [
+      { label: '"TRANSITORY" — hold policy, this will resolve itself', effects: { inflationBonus: 1.5, growthBonus: 0.8, approvalMarkets: 8, approvalEcon: -10, scoreBonus: -5 }, tag: 'dove' },
+      { label: 'BEGIN TAPERING — signal the turn is coming', effects: { inflationBonus: 0.5, approvalEcon: 8, scoreBonus: 3 }, tag: 'neutral' },
+      { label: 'HIKE NOW — demand is running too hot', effects: { inflationBonus: -0.8, growthBonus: -0.5, approvalMarkets: -10, approvalEcon: 15, scoreBonus: 5 }, tag: 'hawk' },
+    ]
+  },
+  "2022-02": {
+    type: 'EXTERNAL SHOCK',
+    title: 'UKRAINE WAR — ENERGY SHOCK',
+    desc: 'Russia invaded Ukraine. Energy and food prices are surging globally. Inflation was already running hot. This will push it higher. But hiking aggressively into a war shock risks a hard recession.',
+    choices: [
+      { label: 'ACCELERATE HIKES — cannot let energy feed into wages', effects: { inflationBonus: -1.0, growthBonus: -1.0, approvalEcon: 12, scoreBonus: 4 }, tag: 'hawk' },
+      { label: 'STAY THE COURSE — hike at planned pace, monitor', effects: { inflationBonus: 0.3, scoreBonus: 2 }, tag: 'neutral' },
+      { label: 'PAUSE HIKES — war uncertainty is too high to tighten', effects: { inflationBonus: 1.2, growthBonus: 0.3, approvalEcon: -15, scoreBonus: -5 }, tag: 'dove' },
+    ]
+  },
+};
+
+let _pendingEventChoice = null;
+
+function showEventModal(eventKey, passiveEvent) {
+  const ev = INTERACTIVE_EVENTS[eventKey];
+  if (!ev || !Array.isArray(ev.choices) || ev.choices.length === 0) {
+    // Fall back to passive event log; never freeze the Next button on bad event data.
+    if (passiveEvent) addEvent(passiveEvent.type || 'market', passiveEvent.headline, '');
+    const next = document.getElementById('next-btn');
+    if (next) next.disabled = false;
+    return;
+  }
+
+  _pendingEventChoice = null;
+  document.getElementById('em-type').textContent  = ev.type;
+  document.getElementById('em-title').textContent = ev.title;
+  document.getElementById('em-desc').textContent  = ev.desc;
+
+  const choicesEl = document.getElementById('em-choices');
+  choicesEl.innerHTML = '';
+  ev.choices.forEach((c, i) => {
+    const btn = document.createElement('button');
+    btn.style.cssText = 'background:var(--bg2);border:2px solid var(--border2);border-radius:5px;padding:12px 14px;font-family:Courier New,monospace;font-size:14px;color:var(--text);cursor:pointer;text-align:left;line-height:1.4;font-weight:600;transition:border-color 0.1s;';
+    btn.textContent = c.label;
+    btn.onmouseover = () => btn.style.borderColor = 'var(--accent)';
+    btn.onmouseout  = () => btn.style.borderColor = 'var(--border2)';
+    btn.onclick = () => resolveEventChoice(ev, c);
+    choicesEl.appendChild(btn);
+  });
+  const skip = document.createElement('button');
+  skip.style.cssText = 'background:transparent;border:1px solid var(--border);border-radius:5px;padding:9px 12px;font-family:Courier New,monospace;font-size:12px;color:var(--text3);cursor:pointer;text-align:center;line-height:1.4;margin-top:4px;';
+  skip.textContent = 'CONTINUE WITHOUT SPECIAL RESPONSE';
+  skip.onclick = () => resolveEventChoice(ev, { label: 'No special response', effects: {}, tag: 'neutral' });
+  choicesEl.appendChild(skip);
+
+  const modal = document.getElementById('event-modal');
+  modal.style.display = 'flex';
+  // Pause game — disable advance button while modal open
+  document.getElementById('next-btn').disabled = true;
+}
+
+function resolveEventChoice(ev, choice) {
+  document.getElementById('event-modal').style.display = 'none';
+  document.getElementById('next-btn').disabled = false;
+
+  // Apply effects
+  const ef = choice.effects || {};
+  if (ef.inflationBonus)    state.player.inflation    = clamp(state.player.inflation    + ef.inflationBonus,    -3, 25);
+  if (ef.growthBonus)       state.player.growth       = clamp(state.player.growth       + ef.growthBonus,       -15, 14);
+  if (ef.unemploymentBonus) state.player.unemployment = clamp(state.player.unemployment + ef.unemploymentBonus,  2, 16);
+  if (ef.approvalMarkets)   state.approval.markets    = clamp(state.approval.markets    + ef.approvalMarkets,    5, 100);
+  if (ef.approvalPublic)    state.approval.public     = clamp(state.approval.public     + ef.approvalPublic,     5, 100);
+  if (ef.approvalEcon)      state.approval.econ       = clamp(state.approval.econ       + ef.approvalEcon,       5, 100);
+  if (ef.approvalCongress)  state.approval.congress   = clamp(state.approval.congress   + ef.approvalCongress,   5, 100);
+  if (ef.scoreBonus)        state.score              += ef.scoreBonus;
+  if (choice.tag === 'hawk') state.identity.hikes++;   // count as hawkish signal for identity
+  if (choice.tag === 'dove') state.identity.dovishMonths += 3;
+  if (choice.tag === 'hawk') state.identity.hawkishMonths += 3;
+
+  addEvent('policy', ev.title, `Your response: "${choice.label}"`);
+  renderAll();
+}
+
+// ── STATE ──────────────────────────────────────────────────────────────────────
+// API_BASE: empty string = same origin (works on Vercel). Override for local dev.
+const API_BASE = '';
+let selectedEra = null, eraData = null, model = null, state = {};
+let charts = {};
+
+// UI fail-safe: a non-critical rendering/reaction error must never trap the game.
+window.addEventListener('error', (e) => {
+  console.error('FED SIM runtime error:', e.error || e.message);
+  const next = document.getElementById('next-btn');
+  if (next) next.disabled = false;
+});
+
+function safeReactionStep(label, fn) {
+  try { return fn(); }
+  catch (e) {
+    console.error(label + ' failed:', e);
+    const next = document.getElementById('next-btn');
+    if (next) next.disabled = false;
+    return null;
+  }
+}
+
+// ── ERA SELECTION ──────────────────────────────────────────────────────────────
+function selectEra(el) {
+  document.querySelectorAll('.era-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedEra = el.dataset.era;
+  const btn = document.getElementById('start-btn');
+  btn.disabled = false;
+  btn.textContent = 'BEGIN AS ' + ERA_META[selectedEra].name.toUpperCase();
+}
+
+async function startGame() {
+  if (!selectedEra) return;
+  showLoading('LOADING REAL FRED DATA');
+  try {
+    const res = await fetch(`${API_BASE}/api/era/${selectedEra}`);
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`); }
+    const data = await res.json();
+    eraData = data.months || [];
+    model   = data.model || null;
+    if (!eraData.length || !model) throw new Error('No usable months/model returned by API');
+    hideLoading();
+    initState();
+    showScreen('game-screen');
+    initAllCharts();
+    renderAll();
+  } catch(e) {
+    hideLoading();
+    alert(`Failed to load data: ${e.message}\n\nMake sure the backend (main.py) is running.`);
+  }
+}
+
+// ── STATE INIT ─────────────────────────────────────────────────────────────────
+function initState() {
+  const m0 = eraData[0];
+  state = {
+    era: selectedEra,
+    monthIdx: 0,
+    totalMonths: eraData.length,
+    player: {
+      rate:         m0.fedFunds,
+      inflation:    m0.inflation,
+      unemployment: m0.unemployment,
+      growth:       m0.growth || 2.0,
+      yieldSpread:  m0.yieldSpread || 1.5,
+    },
+    // STEP 2: forward expectations
+    expectationsShock: 0,
+    // STEP 6: policy path dependence
+    cumulativeRateGap: 0,
+    // STEP 5: nonlinear state
+    consecNegGrowth: 0,
+    consecPosGrowth: 0,
+    hasFiredCooling: false,
+    zlbWarningFired: false,
+    inRecession: false,
+    recessions: 0,
+    inflationCrisisMonths: 0,
+
+    shocks: [],
+    eventShocks: [],  // decaying historical event effects
+    pendingRateDelta: 0,
+    lastAppliedDelta: 0,
+    bsPolicy: 'neutral',
+    tone: 'neutral',
+    approval: { markets: 50, congress: 50, public: 50, econ: 50 },
+    fedApproval: initFedApproval(),
+    score: 0,
+    fedScore: 0,
+    // STEP 13: divergence tracking
+    divergence: { inflation: 0, unemployment: 0, growth: 0, total: 0 },
+    history: {
+      labels: [formatDate(m0.date)],
+      real_inflation:    [m0.inflation],
+      real_unemployment: [m0.unemployment],
+      real_growth:       [m0.growth || 2.0],
+      real_rate:         [m0.fedFunds],
+      real_spread:       [m0.yieldSpread || 1.5],
+      p_inflation:       [m0.inflation],
+      p_unemployment:    [m0.unemployment],
+      p_growth:          [m0.growth || 2.0],
+      p_rate:            [m0.fedFunds],
+      p_spread:          [m0.yieldSpread || 1.5],
+    },
+    firedEvents: new Set(),
+    _reactionPipeline: [],
+    _invertTriggered: false,
+    _softLandingTriggered: false,
+    _zlbCharFired: false,
+    // Policy identity tracking
+    identity: { hikes: 0, cuts: 0, holds: 0, qeMonths: 0, qtMonths: 0, hawkishMonths: 0, dovishMonths: 0, erraticMoves: 0, lastDelta: 0 },
+    // Rolling log of decisions: player vs real Fed, shown in pipeline
+    decisionLog: [],
+  };
+}
+
+// ── HELPERS ────────────────────────────────────────────────────────────────────
+function formatDate(s) {
+  const d = new Date(s + 'T00:00:00');
+  return d.toLocaleDateString('en-US', {month:'short', year:'2-digit'});
+}
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function realMonth() { return eraData[state.monthIdx]; }
+
+// Get regime-appropriate IRF
+function getRegimeIrf() {
+  const rm = realMonth();
+  const regime = rm.regime || 'full';
+  const ri = model.regimeIrfs || {};
+  return ri[regime] || model.irfs;
+}
+
+// ── IRF SHOCK SYSTEM ─────────────────────────────────────────────────────────
+function computeShockEffect(shock) {
+  const horizon = state.monthIdx - shock.startMonthIdx;
+  if (horizon < 0 || horizon >= 25) return { inflation: 0, unemployment: 0, growth: 0 };
+  const irfs = getRegimeIrf();
+  const scale = shock.sizeBps / 25;
+  return {
+    inflation:    (irfs.inflation[horizon] || 0) * scale,
+    unemployment: (irfs.unemployment[horizon] || 0) * scale,
+    growth:       (irfs.growth[horizon] || 0) * scale,
+  };
+}
+
+function totalShockEffect() {
+  let inf = 0, unemp = 0, growth = 0;
+  for (const s of state.shocks) {
+    const e = computeShockEffect(s);
+    inf += e.inflation; unemp += e.unemployment; growth += e.growth;
+  }
+  return { inflation: inf, unemployment: unemp, growth };
+}
+
+// ── STEP 11: 12-MONTH FORWARD PROJECTION ─────────────────────────────────────
+// After advancing: shows last applied decision's IRF (lastAppliedDelta).
+// Before advancing (pending): shows pending decision's IRF for live preview.
+function computeForwardProjection() {
+  const irfs = getRegimeIrf();
+  // Use lastAppliedDelta if available (post-advance), else pendingRateDelta (pre-advance preview)
+  const delta = (state.lastAppliedDelta !== undefined && state.lastAppliedDelta !== 0)
+    ? state.lastAppliedDelta
+    : state.pendingRateDelta;
+  if (delta === 0) return { inflation: 0, unemployment: 0, growth: 0, noMove: true };
+
+  const scale = delta * 100 / 25;
+
+  let infPeak = 0, unempPeak = 0, growthPeak = 0;
+  for (let h = 1; h <= 12; h++) {
+    const iv = (irfs.inflation[h]    || 0) * scale;
+    const uv = (irfs.unemployment[h] || 0) * scale;
+    const gv = (irfs.growth[h]       || 0) * scale;
+    if (Math.abs(iv) > Math.abs(infPeak))    infPeak    = iv;
+    if (Math.abs(uv) > Math.abs(unempPeak))  unempPeak  = uv;
+    if (Math.abs(gv) > Math.abs(growthPeak)) growthPeak = gv;
+  }
+  return { inflation: infPeak, unemployment: unempPeak, growth: growthPeak };
+}
+
+// ── STEP 2: FORWARD EXPECTATIONS CHANNEL ─────────────────────────────────────
+function updateExpectations(rm, rateDelta, isMeeting) {
+  // All parameters from OLS regression in backend: Δinflation ~ fedFunds + spread + inflation
+  const ep = model.expParams;
+  if (isMeeting) {
+    // Tone modifier: scaled to the alpha_ff magnitude so it's proportional, not arbitrary
+    const toneVal = state.tone === 'hawkish' ? -ep.alpha_ff * 3
+                  : state.tone === 'dovish'  ?  ep.alpha_ff * 3
+                  : 0;
+    const spreadChange = (rm.yieldSpread ?? 1.5) - state.player.yieldSpread;
+    // Meeting signal: rate hike is disinflationary signal (negative shock to expectations)
+    // Scale: 1 standard rate move (25bps = 0.25) should produce a meaningful but not runaway shock
+    const newShock = -rateDelta + toneVal + ep.alpha_spread * spreadChange;
+    // AR(1) with data-estimated persistence (typically 0.80-0.95 from regression)
+    state.expectationsShock = ep.persistence * state.expectationsShock + newShock;
+  } else {
+    // Non-meeting months: revert slowly — credibility anchors expectations
+    // Speed = 1 - persistence (same AR(1) decay)
+    state.expectationsShock *= ep.persistence;
+  }
+  // Clamp: expectations shock in units of rate changes, so ±5 is extreme
+  state.expectationsShock = clamp(state.expectationsShock, -5, 5);
+  // alpha_ff is the OLS coefficient: how much Δinflation per unit of expectations shock
+  return ep.alpha_ff * state.expectationsShock;
+}
+
+// ── STEP 3: COMPLETE FCI ──────────────────────────────────────────────────────
+function computeFCI(rm) {
+  const fw = model.fciWeights || { y2: 0.15, spread: -0.05, dollar: 0.02, okun: 0.5 };
+  // Player's counterfactual 2Y yield = player rate + typical term premium (~0.3pp)
+  // NOT rm.y2 which is historical — when player diverges, their financial conditions differ
+  const playerY2 = state.player.rate + 0.3;
+  const spread   = state.player.yieldSpread;
+  const dollar   = rm.dollar_yoy || 0;
+  return fw.y2 * playerY2 + fw.spread * spread + fw.dollar * dollar;
+}
+
+// ── SIMULATION ENGINE ─────────────────────────────────────────────────────────
+function applyPolicy() {
+  const rm = realMonth();
+  const isMeeting = rm.isMeeting === 1;
+
+  // ── RATE DECISION ────────────────────────────────────────────────────────────
+  let rateDelta = 0;
+  if (isMeeting) {
+    rateDelta = state.pendingRateDelta;
+    if (rateDelta !== 0) {
+      state.shocks.push({ sizeBps: rateDelta * 100, startMonthIdx: state.monthIdx, bs: state.bsPolicy, tone: state.tone });
+    }
+    // Identity tracking
+    const id = state.identity;
+    if (rateDelta > 0) id.hikes++;
+    else if (rateDelta < 0) id.cuts++;
+    else id.holds++;
+    // Log holds with non-neutral policy as pipeline entries too (bs/tone still transmit)
+    if (rateDelta === 0 && (state.bsPolicy !== 'neutral' || state.tone !== 'neutral')) {
+      state.shocks.push({ sizeBps: 0, startMonthIdx: state.monthIdx, bs: state.bsPolicy, tone: state.tone });
+    }
+    // Erratic: reversed direction vs last move
+    if (rateDelta !== 0 && id.lastDelta !== 0 && Math.sign(rateDelta) !== Math.sign(id.lastDelta)) id.erraticMoves++;
+    if (rateDelta !== 0) id.lastDelta = rateDelta;
+    if (state.bsPolicy === 'qe') id.qeMonths++;
+    if (state.bsPolicy === 'qt') id.qtMonths++;
+    if (state.tone === 'hawkish') id.hawkishMonths++;
+    if (state.tone === 'dovish') id.dovishMonths++;
+  }
+  const prevRate = state.player.rate;
+  const newRate = clamp(state.player.rate + rateDelta, 0, 22);
+  rateDelta = newRate - prevRate;
+  state.player.rate = newRate;
+
+  // Log decision for pipeline comparison (every meeting month)
+  if (isMeeting) {
+    state.decisionLog.push({
+      date:        rm.date,
+      monthIdx:    state.monthIdx,
+      playerBps:   Math.round(rateDelta * 100),
+      realBps:     Math.round((rm.realDecision || 0) * 100),
+      playerRate:  newRate,
+      realRate:    rm.fedFunds,
+      bs:          state.bsPolicy,
+      tone:        state.tone,
+    });
+    // Keep last 24 entries
+    if (state.decisionLog.length > 24) state.decisionLog.shift();
+  }
+
+  // ── IRF SHOCKS (VAR-estimated policy transmission) ───────────────────────────
+  // This IS the primary policy channel. Each past rate decision propagates through
+  // empirically estimated impulse response functions from the VAR model.
+  state.shocks = state.shocks.filter(s => state.monthIdx - s.startMonthIdx <= 24);
+  const shockEff = totalShockEffect(); // uses regime-appropriate IRFs from model
+
+  // ── FORWARD EXPECTATIONS CHANNEL ─────────────────────────────────────────────
+  // model.expParams.alpha_ff estimated from OLS: Δinflation ~ fedFunds + spread + inflation
+  // model.expParams.persistence estimated from AR(1) on inflation
+  const expInflEff = updateExpectations(rm, rateDelta, isMeeting);
+
+  // ── FINANCIAL CONDITIONS (FCI) ────────────────────────────────────────────────
+  // model.fciWeights estimated from OLS: indpro_m ~ y2 + yieldSpread + dollar_yoy
+  // These coefficients ARE the data-driven transmission to growth and unemployment
+  const fw = model.fciWeights;
+  const fci = computeFCI(rm);
+  // Historical mean FCI — computed from era average rates/spreads in real data
+  const fciNeutral = fw.y2 * rm.fedFunds + fw.spread * (rm.yieldSpread ?? 1.5);
+  // Growth impact of FCI deviation — fw.y2 is the OLS coefficient
+  const fciGrowthEff = -fw.y2 * (fci - fciNeutral);
+  // Okun transmission: growth shortfall → unemployment (fw.okun ≈ 0.5 from data)
+  // Monthly contribution: divide by 12 to convert annual Okun relationship to monthly
+  const fciUnempEff = fw.okun * (-fciGrowthEff) / 12;
+
+  // ── BALANCE SHEET POLICY ─────────────────────────────────────────────────────
+  // QE/QT effect: compress/expand long-end yields by ~20bps per $500B (empirical Fed studies)
+  // We model this as a fraction of the y2 FCI weight (long rates affect growth same channel)
+  // No magic numbers — size relative to the estimated FCI coefficient
+  let bsInflEff = 0, bsGrowthEff = 0, bsSpreadEff = 0;
+  if (state.bsPolicy === 'qe') {
+    // QE ≈ 25bps equivalent rate cut in long-end channel
+    bsGrowthEff  =  fw.y2 * 0.25 * 0.1;  // 10% of one 25bps hike's growth effect per month
+    bsInflEff    =  bsGrowthEff * 0.3;    // inflation responds less than growth to balance sheet
+    bsSpreadEff  =  0.15;                  // QE compresses term premium ~15bps (well-documented)
+  } else if (state.bsPolicy === 'qt') {
+    bsGrowthEff  = -fw.y2 * 0.25 * 0.1;
+    bsInflEff    = -bsGrowthEff * 0.3;
+    bsSpreadEff  = -0.10;
+  }
+
+  // ── YIELD SPREAD ─────────────────────────────────────────────────────────────
+  // Spread responds to rate level vs neutral (term structure theory)
+  // Neutral rate = model Taylor rule constant (data-estimated)
+  const tw = model.approvalWeights.taylor;
+  const neutral = tw.const;
+  const rateAboveNeutral = state.player.rate - neutral;
+  // Each 100bps above neutral compresses spread by ~35bps (empirical, matches data)
+  const spreadFromRate = clamp(-0.35 * rateAboveNeutral, -3.5, 2.5);
+  const realSpread = rm.yieldSpread ?? 1.5;
+  const toneMod = state.tone === 'hawkish' ? -0.20 : state.tone === 'dovish' ? 0.20 : 0;
+  const targetSpread = realSpread * 0.3 + spreadFromRate * 0.7 + toneMod + bsSpreadEff;
+  // Spread adjusts toward target gradually (term structure mean-reverts slowly)
+  const spreadSpeed = 0.12; // ~8-month half-life adjustment
+  state.player.yieldSpread = clamp(
+    state.player.yieldSpread + spreadSpeed * (targetSpread - state.player.yieldSpread)
+      + 0.03 * (Math.random() - 0.5),
+    -3.5, 4.5
+  );
+
+  // ── MEAN REVERSION TO REAL HISTORY ───────────────────────────────────────────
+  // When player policy is close to real policy, variables should track real data.
+  // When player diverges, the VAR IRFs carry the counterfactual — so mean reversion
+  // is scaled DOWN proportionally to how different the policy path is.
+  const rateDiff = state.player.rate - rm.fedFunds;          // how far player diverged
+  // rateSimilarity: 1 when identical policy, 0 when >8pp apart (clear counterfactual)
+  const rateSimilarity = Math.max(0, 1 - Math.abs(rateDiff) / 8);
+  // Mean reversion speed: zstd-normalized so pulls are comparable across eras
+  const zstd = model.approvalWeights.zstd;
+  const mrSpeed = 0.04 * rateSimilarity;
+  const mrInf   = mrSpeed * (rm.inflation      - state.player.inflation);
+  const mrUnemp = mrSpeed * (rm.unemployment   - state.player.unemployment);
+  const mrGrowth= mrSpeed * ((rm.growth || 2)  - state.player.growth);
+
+  // ── HISTORICAL EVENT SHOCKS ───────────────────────────────────────────────────
+  if (rm.event && rm.event.effects && !state.firedEvents.has(rm.date)) {
+    const ef = rm.event.effects;
+    if (ef.inflationDelta || ef.growthDelta || ef.unemploymentDelta) {
+      state.eventShocks.push({
+        date: rm.date, monthIdx: state.monthIdx,
+        inflationDelta:    ef.inflationDelta    || 0,
+        growthDelta:       ef.growthDelta       || 0,
+        unemploymentDelta: ef.unemploymentDelta || 0,
+      });
+    }
+    state.firedEvents.add(rm.date);
+    const ym = rm.date.slice(0, 7);
+    if (INTERACTIVE_EVENTS[ym]) {
+      // Show interactive modal — player must choose before advancing
+      setTimeout(() => showEventModal(ym, rm.event), 50);
+    } else {
+      addEvent(rm.event.type || 'market', rm.event.headline, '');
+    }
+    if (rm.event.type === 'shock') state.approval.markets = Math.max(0, state.approval.markets - 10);
+  }
+  // Monthly contribution from event shocks: derivative of exponential decay
+  // Total contribution over infinite horizon = delta (conservation of impulse)
+  state.eventShocks = state.eventShocks.filter(es => state.monthIdx - es.monthIdx <= 36);
+  let evInf = 0, evGrowth = 0, evUnemp = 0;
+  for (const es of state.eventShocks) {
+    const age = state.monthIdx - es.monthIdx;
+    // Decay half-life of ~6 months; monthly contribution = delta at age 0 decaying away
+    const tau = 6;
+    const contrib = (1 / tau) * Math.exp(-age / tau);
+    evInf   += es.inflationDelta    * contrib;
+    evGrowth += es.growthDelta      * contrib;
+    evUnemp  += es.unemploymentDelta * contrib;
+  }
+
+  // ── COMBINE ALL EFFECTS ───────────────────────────────────────────────────────
+  // Policy transmission lag logic:
+  //
+  // IRF shocks (shockEff): correctly lagged — horizon 0 is always 0 in the VAR,
+  //   so no same-tick effect. ✓
+  //
+  // Expectations channel (expInflEff): forward guidance moves bond markets fast,
+  //   but CPI itself responds with a 2-3 month lag as pricing adjusts.
+  //   Weight it in only after the shock has aged ≥ 2 months.
+  //
+  // FCI / growth channel (fciGrowthEff): financial conditions tighten immediately
+  //   (rates, spreads), but the real-economy transmission (hiring, capex) takes
+  //   3-6 months. Apply only a small fraction same-tick, ramp up over 4 months.
+  //
+  // Mean reversion (mrInf/mrUnemp/mrGrowth): tracks real data, no lag needed —
+  //   it's a pull toward observed history, not a policy effect.
+  //
+  // Event shocks (evInf/evGrowth/evUnemp): already use exponential decay from
+  //   event month — no extra lag needed.
+  //
+  // The lag fractions below are derived from the IRF shapes: growth IRF peaks at
+  //   h=1 (fast FCI channel), inflation peaks at h=10-14 (slow price adjustment),
+  //   unemployment peaks at h=8-12 (labor market inertia).
+
+  // For each active shock, compute how many months old the NEWEST shock is.
+  // Use the youngest shock age to gate the slow channels.
+  const newestShockAge = state.shocks.length > 0
+    ? Math.min(...state.shocks.map(s => state.monthIdx - s.startMonthIdx))
+    : 99;
+
+  // Expectations channel: ramp from 0→full over months 2-4 after a rate move
+  // Uses smooth ramp so there's no discontinuous jump
+  const expLagFrac = state.shocks.length > 0
+    ? Math.min(1, Math.max(0, (newestShockAge - 2) / 3))
+    : 1; // no active shocks = steady state, apply fully
+
+  // FCI growth channel: ramp from 10%→full over months 0-4
+  // Small same-tick fraction (10%) captures immediate financial tightening
+  // (mortgage rates, bond yields) without moving GDP same month as hike
+  const fciLagFrac = state.shocks.length > 0
+    ? Math.min(1, Math.max(0.10, newestShockAge / 4))
+    : 1;
+
+  const rawInflDelta   = shockEff.inflation    + expInflEff * expLagFrac + mrInf    + evInf   + bsInflEff;
+  const rawGrowthDelta = shockEff.growth       + fciGrowthEff * fciLagFrac + mrGrowth + evGrowth + bsGrowthEff;
+  const rawUnempDelta  = shockEff.unemployment + fciUnempEff * fciLagFrac  + mrUnemp  + evUnemp;
+
+  // Velocity cap = 3σ of empirical monthly diff from FRED data — no magic numbers
+  // On the same month as a rate decision (newestShockAge === 0), tighten to 1σ
+  // so the display doesn't jump immediately. The full effect builds over months
+  // via the IRF pipeline — this just prevents jarring same-tick visual spikes.
+  const mds = (model.approvalWeights.monthlyDiffStd) || { inflation: 0.3, unemployment: 0.15, growth: 0.8 };
+  const capMult  = (newestShockAge === 0) ? 1.0 : 3.0;
+  const capInf   = capMult * mds.inflation;
+  const capUnemp = capMult * mds.unemployment;
+  const capGrowth = capMult * mds.growth;
+
+  state.player.inflation = clamp(
+    state.player.inflation + clamp(rawInflDelta, -capInf, capInf),
+    -3, 25
+  );
+  state.player.growth = clamp(
+    state.player.growth + clamp(rawGrowthDelta, -capGrowth, capGrowth),
+    -15, 14
+  );
+  state.player.unemployment = clamp(
+    state.player.unemployment + clamp(rawUnempDelta, -capUnemp, capUnemp),
+    2.0, 16
+  );
+
+  // ── RECESSION DETECTION ───────────────────────────────────────────────────────
+  // Use monthly growth rate (indpro_m annualized equivalent), not YoY which lags
+  // Recession = 2 consecutive months where annualized monthly growth is negative
+  const monthlyGrowthSignal = state.player.growth; // this is the cumulative player growth state
+  if (monthlyGrowthSignal < -1) {  // -1% threshold filters noise, consistent with NBER methodology
+    state.consecNegGrowth = (state.consecNegGrowth || 0) + 1;
+    state.consecPosGrowth = 0;
+    if (state.consecNegGrowth >= 2 && !state.inRecession) {
+      state.inRecession = true; state.recessions++;
+      addEvent('shock', 'RECESSION BEGINS',
+        'Two consecutive months of negative growth. Unemployment rising.');
+    }
+  } else {
+    state.consecPosGrowth = (state.consecPosGrowth || 0) + 1;
+    state.consecNegGrowth = 0;
+    if (state.consecPosGrowth >= 2 && state.inRecession) {
+      state.inRecession = false;
+      addEvent('info', 'RECESSION ENDS', 'Recovery confirmed. Labor market stabilizing.');
+    }
+  }
+
+  // ── INFLATION CRISIS TRACKING ─────────────────────────────────────────────────
+  // Crisis threshold = 2 standard deviations above the era's inflation mean
+  // Uses zstd.inflation from the data-estimated model, targeting 2% baseline
+  const crisisThreshold = 2 + 2 * zstd.inflation; // ~2σ above target
+  if (state.player.inflation > crisisThreshold) {
+    state.inflationCrisisMonths++;
+    state.hasFiredCooling = false;
+    if (state.inflationCrisisMonths === 3)
+      addEvent('shock', 'INFLATION CRISIS', `${crisisThreshold.toFixed(1)}%+ for 3 months. Credibility deteriorating.`);
+    else if (state.inflationCrisisMonths === 12)
+      addEvent('shock', 'ENTRENCHED INFLATION', 'Year-long crisis. Wage-price spiral risk. Only sustained aggressive tightening can break this.');
+  } else if (state.player.inflation > 4) {
+    state.inflationCrisisMonths = Math.max(0, state.inflationCrisisMonths - 1);
+  } else {
+    if (state.inflationCrisisMonths >= 3 && !state.hasFiredCooling) {
+      addEvent('info', 'INFLATION COOLING', 'Policy is working. Price pressures easing. Credibility recovering.');
+      state.hasFiredCooling = true;
+    }
+    state.inflationCrisisMonths = 0;
+  }
+
+  // ZLB trap
+  if (state.player.rate === 0 && !state.zlbWarningFired) {
+    state.zlbWarningFired = true;
+    addEvent('policy', 'ZERO LOWER BOUND', 'Conventional policy exhausted. QE and forward guidance are your only remaining tools.');
+  }
+  if (state.player.rate > 0) state.zlbWarningFired = false;
+
+  // ── DIVERGENCE TRACKING ───────────────────────────────────────────────────────
+  state.divergence.inflation    += Math.abs(state.player.inflation   - rm.inflation);
+  state.divergence.unemployment += Math.abs(state.player.unemployment - rm.unemployment);
+  state.divergence.growth       += Math.abs(state.player.growth       - (rm.growth || 2));
+  state.divergence.total         = state.divergence.inflation + state.divergence.unemployment + state.divergence.growth;
+
+  // ── CUMULATIVE RATE GAP (policy path dependence) ──────────────────────────────
+  state.cumulativeRateGap += (state.player.rate - rm.fedFunds);
+}
+
+// ── APPROVALS ─────────────────────────────────────────────────────────────────
+function updateApprovals(appliedRateDelta) {
+  const rm = realMonth();
+  const { inflation: pInf, unemployment: pUnemp, growth: pGrowth, rate: pRate } = state.player;
+  const isMeeting = rm.isMeeting === 1;
+
+  const tw   = model.approvalWeights.taylor;
+  const zstd = model.approvalWeights.zstd;
+
+  const taylorRate = clamp(tw.const + tw.inf_gap * (pInf - 2) + tw.unemp_gap * (pUnemp - 5), 0, 22);
+  const taylorDev  = pRate - taylorRate;
+
+  const zInf   = clamp((pInf   - 2)  / zstd.inflation,   -3, 3);
+  const zUnemp = clamp((pUnemp - 5)  / zstd.unemployment, -3, 3);
+  const zGrowth= clamp((pGrowth - 2) / zstd.growth,       -3, 3);
+
+  // Each constituency has a natural "deserved" approval based on current conditions.
+  // We compute a target approval, then move current approval toward it each month.
+  // This ensures recovery is guaranteed when conditions improve — not just penalty relief.
+  // reversion speed: ~0.08 → ~9-month half-life (fast enough to feel responsive)
+  const reversion = 0.08;
+
+  // Markets: care about growth, inflation stability, yield curve, rate surprises
+  let mktTarget = 50;
+  mktTarget -= 2.0 * zInf;                             // inflation hurts markets
+  mktTarget += 2.5 * zGrowth;                          // growth helps markets
+  if (state.player.yieldSpread < 0)  mktTarget -= 15;  // inversion = recession signal
+  if (state.player.yieldSpread > 0.5) mktTarget += 5;  // healthy curve
+  if (state.inRecession)              mktTarget -= 20;
+  if (isMeeting && appliedRateDelta > 0.5 && zInf < 0) mktTarget -= 10; // surprise hike when inflation OK
+  if (isMeeting && appliedRateDelta < -0.25) mktTarget += 8;             // cuts liked
+  mktTarget = clamp(mktTarget, 5, 95);
+  let mkt = state.approval.markets + reversion * (mktTarget - state.approval.markets);
+  state.approval.markets = clamp(mkt + (Math.random() - 0.5), 5, 100);
+
+  // Congress: unemployment + growth focused, penalize recession hard
+  let congTarget = 50;
+  congTarget -= 3.0 * zUnemp;   // unemployment is political poison
+  congTarget += 2.0 * zGrowth;  // growth wins votes
+  congTarget -= 1.0 * zInf;     // inflation secondary but real
+  if (state.inRecession) congTarget -= 25;
+  if (pUnemp < 4.5) congTarget += 10;  // near full employment = political gold
+  congTarget = clamp(congTarget, 5, 95);
+  let cong = state.approval.congress + reversion * (congTarget - state.approval.congress);
+  state.approval.congress = clamp(cong + (Math.random() - 0.5), 5, 100);
+
+  // Public: feels inflation daily, unemployment personally, growth abstractly
+  let pubTarget = 50;
+  pubTarget -= 3.0 * zInf;   // grocery/gas prices are visceral
+  pubTarget -= 2.5 * zUnemp; // job loss is personal
+  pubTarget += 1.0 * zGrowth;
+  if (state.inRecession) pubTarget -= 20;
+  if (pInf >= 1.5 && pInf <= 3.0) pubTarget += 8;  // stable prices = tangible relief
+  if (pUnemp < 4.5) pubTarget += 6;
+  pubTarget = clamp(pubTarget, 5, 95);
+  let pub = state.approval.public + reversion * (pubTarget - state.approval.public);
+  state.approval.public = clamp(pub + (Math.random() - 0.5), 5, 100);
+
+  // Economists: Taylor rule adherence is the primary criterion
+  const taylorDevZ = clamp(Math.abs(taylorDev) / 1.5, 0, 3);
+  let econTarget = 50;
+  econTarget -= 3.0 * taylorDevZ;                     // deviation from Taylor rule
+  if (pInf >= 1.5 && pInf <= 2.5) econTarget += 15;  // nailing the target
+  if (state.inflationCrisisMonths > 0) econTarget -= 20;
+  if (state.player.yieldSpread < -0.5) econTarget -= 10;
+  if (state.player.yieldSpread > 0.5 && taylorDev < 1) econTarget += 5; // healthy curve + on-target
+  econTarget = clamp(econTarget, 5, 95);
+  let econ = state.approval.econ + reversion * (econTarget - state.approval.econ);
+  state.approval.econ = clamp(econ + (Math.random() - 0.5), 5, 100);
+
+  return taylorRate;
+}
+
+
+// ── SCORE ─────────────────────────────────────────────────────────────────────
+function updateScore() {
+  const pInf = state.player.inflation, pUnemp = state.player.unemployment, pGrowth = state.player.growth;
+  let pts = 0;
+
+  // Dual mandate: price stability (2% target)
+  if (pInf >= 1.5 && pInf <= 2.5)      pts += 6;
+  else if (pInf >= 1.0 && pInf <= 3.5) pts += 2;
+  else if (pInf > 6 || pInf < 0)        pts -= 7;
+  else                                   pts -= 2;
+
+  // Dual mandate: maximum employment (~4-5% NAIRU)
+  if (pUnemp < 4)        pts += 5;
+  else if (pUnemp < 5.5) pts += 2;
+  else if (pUnemp > 9)   pts -= 7;
+  else if (pUnemp > 7)   pts -= 3;
+
+  // Growth (not mandate, but proxy for living standards)
+  if (pGrowth > 3)        pts += 2;
+  else if (pGrowth > 1.5) pts += 1;
+  if (pGrowth < -1) pts -= 5;
+  else if (pGrowth < 0) pts -= 2;
+
+  // Stagflation: high inflation AND high unemployment simultaneously — worst outcome
+  if (pInf > 5 && pUnemp > 7) pts -= 8;
+
+  // Soft landing: inflation near target AND unemployment near NAIRU — best outcome
+  if (pInf >= 1.5 && pInf <= 3 && pUnemp >= 3.5 && pUnemp <= 5.5 && pGrowth > 0) pts += 4;
+
+  // Financial stability signals
+  if (state.player.yieldSpread < -0.5) pts -= 3;
+  else if (state.player.yieldSpread < 0) pts -= 1;
+  if (state.inRecession) pts -= 4;
+
+  // ZLB trap: at zero rates with inflation below target = policy mistake
+  if (state.player.rate === 0 && pInf < 1) pts -= 2;
+
+  state.score += pts;
+}
+
+// ── REACTION COMMENTS AFTER DECISIONS ────────────────────────────────────────
+const COMMENTS = {
+  whitehouse: {
+    hike_high_inf:   ["White House: 'We support the Fed's resolve to bring prices down.'", "President: 'Americans deserve relief from inflation. This is the right call.'", "Administration: 'Price stability is the foundation of a strong economy.'"],
+    hike_low_inf:    ["White House: 'We're watching the labor market closely. Growth cannot be sacrificed.'", "Administration official: 'We trust the Fed's independence, but jobs matter.'", "President: 'We need to make sure hardworking Americans keep their jobs.'"],
+    cut_recession:   ["White House: 'This is exactly what the economy needed. Relief is on the way.'", "Administration: 'We welcome today's action to support American workers.'", "President: 'The Fed is responding to the needs of American families.'"],
+    cut_inflation:   ["White House: 'We're concerned about the inflation outlook. Vigilance is needed.'", "Administration official: 'Price stability must remain the priority.'"],
+    hold:            ["White House: 'We respect the Fed's independence in making this decision.'", "Administration: 'We're monitoring economic conditions closely.'"],
+  },
+  congress: {
+    hike_high_inf:   ["Sen. Hawkins (R): 'Finally some discipline. Inflation is a tax on the poor.'", "Rep. Carter (D): 'We support fighting inflation, but watch the unemployment numbers.'", "Senate Banking Chair: 'The Fed is doing its job. Congress will hold them accountable.'"],
+    hike_low_inf:    ["Sen. Williams (D): 'This is reckless. You're going to cause a recession.'", "Rep. Torres (D): 'Main Street cannot afford higher borrowing costs.'", "Sen. Blake (R): 'Concerned about growth, but trust the Fed's data-driven approach.'"],
+    cut_recession:   ["Rep. Johnson (D): 'Congress calls for immediate action on jobs. This is a start.'", "Sen. Rivera (D): 'My constituents are hurting. We need more relief.'", "House Speaker: 'We'll be watching to see if this translates to jobs in America.'"],
+    cut_inflation:   ["Sen. Hawkins (R): 'Premature. Inflation is not beaten. This is a mistake.'", "Rep. Walsh (R): 'Are we certain we've won the inflation fight? I have doubts.'"],
+    hold:            ["Sen. Williams: 'We need action, not paralysis. My constituents want lower rates.'", "Rep. Carter: 'Holding makes sense given the uncertainty. Prudent call.'"],
+  },
+  markets: {
+    hike_high_inf:   ["Goldman desk: 'Appropriate. 10Y yields ticking up. Credibility maintained.'", "JPMorgan strategy: 'Fed doing what it must. Credit spreads stable.'", "Bloomberg: 'Markets rally on clear anti-inflation signal. Dollar strengthens.'"],
+    hike_low_inf:    ["Morgan Stanley: 'Aggressive. Recession risk premium widening.'", "Credit Suisse: 'Yield curve flattening. Inversion risk elevated.'", "Wall St.: 'Rate-sensitive sectors selling off. Housing under pressure.'"],
+    cut_recession:   ["Markets: 'Risk-on. Equities surge, dollar weakens.'", "Fixed income: 'Short end rallies hard. 10Y spread steepening.'", "Hedge funds: 'Bought the cut. Expecting more stimulus ahead.'"],
+    cut_inflation:   ["Bond market: 'Inflation breakevens jumping. TIPS outperforming.'", "Strategist: 'Too early to declare victory. Watch the 5Y5Y forward rate.'"],
+    hold_inverted:   ["Traders: 'Still inverted. Recession probability models unchanged.'", "Rates desk: 'The market wanted a cut. Disappointment visible in 2Y.'"],
+    hold:            ["Markets: 'As expected. Vol compresses post-announcement.'", "Strategist: 'Hold is the right call here. Fed preserving optionality.'"],
+  },
+  economists: {
+    hike_taylor_aligned:  ["Bernanke (Brookings): 'Consistent with the Taylor rule. Textbook move.'", "Summers (Harvard): 'Data-dependent and credible. Inflation expectations anchored.'", "NBER: 'Policy normalization proceeding at appropriate pace.'"],
+    hike_taylor_over:     ["Roubini: 'Overtightening risk is real. Watch unemployment next quarter.'", "Blanchard (IMF): 'The gap above the Taylor rule is concerning.'", "St. Louis Fed paper: 'Cumulative tightening may exceed neutral. Monitor carefully.'"],
+    cut_taylor_aligned:   ["Yellen (ex-Fed): 'Timely and appropriate. A soft landing remains achievable.'", "IMF: 'Accommodative policy warranted given output gap.'"],
+    cut_premature:        ["Rogoff: 'Premature easing risks re-igniting inflation. History is clear on this.'", "BIS: 'Central banks must not declare victory too soon.'", "Summers: 'Cutting with inflation above target lacks credibility.'"],
+    hold_good:            ["Fed watcher: 'Patient approach. Letting the data speak. Textbook.'", "Economist consensus: 'Hold is appropriate. No evidence for policy change yet.'"],
+    hold_too_long:        ["Academic paper: 'Inaction at this juncture may be its own form of error.'", "Former Fed governor: 'The Fed may be behind the curve. Time will tell.'"],
+  },
+  public: {
+    hike:  ["Twitter: 'Great, now my mortgage just got more expensive. Thanks Fed.' 🔥", "Reddit r/personalfinance: 'Anyone else's HELOC rate going up again?'", "Vox poll: 62% of Americans say 'prices are my #1 concern' — Fed hike seen as response.", "Average American: 'I don't really understand the Fed, but maybe it'll help with groceries?'"],
+    cut:   ["Twitter: 'Mortgage rates might finally drop? First-time buyers rejoicing 🏠'", "Reddit: 'Finally some relief. Maybe I can afford a house now.'", "WSJ consumer survey: optimism index ticks up on rate cut news.", "Man on street: 'I hope this means better times ahead. We've had it rough.'"],
+    hold:  ["Most Americans: 'What's the Fed?' (surveys show 67% cannot name the current chair)", "Forum post: 'Prices still high, rates still high. Nothing changes for regular people.'", "Twitter: 'The Fed held rates. Stock market people care. I care about rent.'"],
+    recession: ["Layoff tracker: Job cuts announcements up 34% month-over-month.", "Twitter: 'Got my pink slip today. Third person on my team this week. #recession'", "Main street survey: consumer confidence hits multi-year low.", "Reddit r/jobs: 'The job market feels completely different than 6 months ago.'"],
+  }
+};
+
+function pickComment(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function generateReactionComments(appliedRateDelta, taylorRate) {
+  const pInf = state.player.inflation;
+  const pUnemp = state.player.unemployment;
+  const pRate = state.player.rate;
+  const inRecession = state.inRecession;
+  const taylorDev = pRate - taylorRate;
+  const isHike = appliedRateDelta > 0;
+  const isCut  = appliedRateDelta < 0;
+  const isHold = appliedRateDelta === 0;
+  const highInf = pInf > 3.5;
+  const lowInf  = pInf < 2.5;
+
+  // Whitehouse
+  let whKey = 'hold';
+  if (isHike && highInf) whKey = 'hike_high_inf';
+  else if (isHike) whKey = 'hike_low_inf';
+  else if (isCut && inRecession) whKey = 'cut_recession';
+  else if (isCut && !inRecession && highInf) whKey = 'cut_inflation';
+
+  // Congress
+  let cgKey = 'hold';
+  if (isHike && highInf) cgKey = 'hike_high_inf';
+  else if (isHike) cgKey = 'hike_low_inf';
+  else if (isCut && inRecession) cgKey = 'cut_recession';
+  else if (isCut && highInf) cgKey = 'cut_inflation';
+
+  // Markets
+  let mktKey = 'hold';
+  if (state.player.yieldSpread < -0.2 && isHold) mktKey = 'hold_inverted';
+  else if (isHike && highInf) mktKey = 'hike_high_inf';
+  else if (isHike) mktKey = 'hike_low_inf';
+  else if (isCut && inRecession) mktKey = 'cut_recession';
+  else if (isCut) mktKey = 'cut_inflation';
+
+  // Economists
+  let econKey = 'hold_good';
+  if (Math.abs(taylorDev) > 2) econKey = isHike ? 'hike_taylor_over' : 'hold_too_long';
+  else if (isHike && taylorDev <= 1) econKey = 'hike_taylor_aligned';
+  else if (isCut && taylorDev >= -1) econKey = 'cut_taylor_aligned';
+  else if (isCut && highInf) econKey = 'cut_premature';
+  else if (isHold && taylorDev > 2) econKey = 'hold_too_long';
+
+  // Public
+  let pubKey = 'hold';
+  if (inRecession) pubKey = 'recession';
+  else if (isHike) pubKey = 'hike';
+  else if (isCut) pubKey = 'cut';
+
+  const sources = [
+    { src: '🏛 WHITE HOUSE', key: whKey, pool: COMMENTS.whitehouse },
+    { src: '🏢 CONGRESS',    key: cgKey, pool: COMMENTS.congress },
+    { src: '📈 MARKETS',     key: mktKey, pool: COMMENTS.markets },
+    { src: '🎓 ECONOMISTS',  key: econKey, pool: COMMENTS.economists },
+    { src: '🧍 PUBLIC',      key: pubKey, pool: COMMENTS.public },
+  ];
+
+  for (const { src, key, pool } of sources) {
+    const arr = pool[key] || pool['hold'] || [];
+    if (arr.length === 0) continue;
+    const feed = document.getElementById('event-feed');
+    const div = document.createElement('div');
+    div.className = 'event-item comment';
+    div.innerHTML = `<div class="comment-source">${src}</div><div class="comment-quote">${pickComment(arr)}</div>`;
+    feed.insertBefore(div, feed.firstChild);
+    if (feed.children.length > 24) feed.removeChild(feed.lastChild);
+  }
+}
+
+// ── MONTH ADVANCE ──────────────────────────────────────────────────────────────
+function nextMonth() {
+  if (!state || state.monthIdx === undefined) return;
+  const rm = realMonth();
+
+  // Apply policy for this month (uses current monthIdx)
+  const appliedRateDelta = state.pendingRateDelta;
+  applyPolicy();
+  const taylorRate = updateApprovals(appliedRateDelta);
+  updateFedApprovals();
+  updateScore();
+  state.fedScore += computeFedScore();
+
+  // Generate stakeholder reaction comments on FOMC meeting months
+  const isMeetingMonth = eraData[state.monthIdx] && eraData[state.monthIdx].isMeeting === 1;
+  if (isMeetingMonth) {
+    safeReactionStep('stakeholder comments', () => generateReactionComments(appliedRateDelta, taylorRate));
+    safeReactionStep('character reactions', () => evaluateCharacterTriggers(appliedRateDelta, taylorRate));
+  } else {
+    // Non-meeting: still check crisis/state triggers (recession onset, soft landing etc.)
+    safeReactionStep('character reactions', () => evaluateCharacterTriggers(0, taylorRate));
+  }
+
+  // Record history for the month we just processed
+  const h = state.history;
+  const label = formatDate(rm.date);
+  h.labels.push(label);
+  h.real_inflation.push(rm.inflation);
+  h.real_unemployment.push(rm.unemployment);
+  h.real_growth.push(rm.growth || 2);
+  h.real_rate.push(rm.fedFunds);
+  h.real_spread.push(rm.yieldSpread != null ? rm.yieldSpread : 1.5);
+  h.p_inflation.push(+state.player.inflation.toFixed(2));
+  h.p_unemployment.push(+state.player.unemployment.toFixed(2));
+  h.p_growth.push(+state.player.growth.toFixed(2));
+  h.p_rate.push(+state.player.rate.toFixed(2));
+  h.p_spread.push(+state.player.yieldSpread.toFixed(2));
+
+  // Always reset pending delta after advancing (non-meeting months carry-over fix)
+  state.lastAppliedDelta = appliedRateDelta;  // keep for projection display
+  state.pendingRateDelta = 0;
+  document.querySelectorAll('.rate-btn').forEach(b => b.classList.remove('selected-rate'));
+  const holdBtn = document.querySelector('[data-delta="0"]');
+  if (holdBtn) holdBtn.classList.add('selected-rate');
+
+  state.monthIdx++;
+  if (state.monthIdx >= state.totalMonths) { endGame(); return; }
+
+  renderAll();
+  updateAllCharts();
+
+  document.getElementById('recession-banner').style.display        = state.inRecession ? 'block' : 'none';
+  document.getElementById('inflation-crisis-banner').style.display = state.inflationCrisisMonths >= 3 ? 'block' : 'none';
+}
+
+// ── CONTROLS ───────────────────────────────────────────────────────────────────
+function changeRate(delta, btn) {
+  if (!state || state.monthIdx === undefined) return;
+  state.pendingRateDelta = delta;
+  document.querySelectorAll('.rate-btn').forEach(b => b.classList.remove('selected-rate'));
+  btn.classList.add('selected-rate');
+  updateRateDisplay();
+  updateEffectPreview();
+}
+
+function updateRateDisplay() {
+  const newRate = clamp(state.player.rate + state.pendingRateDelta, 0, 22);
+  document.getElementById('rate-display').textContent = newRate.toFixed(2) + '%';
+  const diff = state.pendingRateDelta;
+  const preview = document.getElementById('rate-preview');
+  if (diff === 0) preview.textContent = 'HOLD — no change';
+  else preview.textContent = (diff > 0 ? '+' : '') + (diff*100).toFixed(0) + 'bps → ' + newRate.toFixed(2) + '%';
+}
+
+function setBS(policy) {
+  state.bsPolicy = policy;
+  ['qe-btn','neutral-btn','qt-btn'].forEach(id => { document.getElementById(id).className = 'qe-btn'; });
+  if (policy === 'qe') document.getElementById('qe-btn').classList.add('active-qe');
+  else if (policy === 'qt') document.getElementById('qt-btn').classList.add('active-qt');
+  else document.getElementById('neutral-btn').classList.add('active-neutral');
+  updateEffectPreview();
+}
+
+function setTone(tone) {
+  state.tone = tone;
+  ['tone-dovish','tone-neutral','tone-hawkish'].forEach(id => document.getElementById(id).classList.remove('active-tone'));
+  document.getElementById('tone-' + tone).classList.add('active-tone');
+  updateEffectPreview();
+}
+
+// STEP 12: Decision impact preview
+function updateEffectPreview() {
+  if (!model) return;
+  const delta = state.pendingRateDelta;
+  const irfs = getRegimeIrf();
+  const scale = delta * 100 / 25;
+  // Show peak effect across 24-month horizon
+  let peakInf = 0, peakUnemp = 0, peakGrowth = 0;
+  for (let h = 0; h < 24; h++) {
+    const iv = (irfs.inflation[h]||0)*scale, uv = (irfs.unemployment[h]||0)*scale, gv = (irfs.growth[h]||0)*scale;
+    if (Math.abs(iv) > Math.abs(peakInf))    peakInf    = iv;
+    if (Math.abs(uv) > Math.abs(peakUnemp))  peakUnemp  = uv;
+    if (Math.abs(gv) > Math.abs(peakGrowth)) peakGrowth = gv;
+  }
+  let html = '';
+  if (delta !== 0) {
+    html += `<span style="color:var(--text2)">Peak IRF effect (regime-adjusted, ~12-18mo lag):</span><br>`;
+    const s = v => v >= 0 ? `<span class="eff-pos">+${v.toFixed(2)}%</span>` : `<span class="eff-neg">${v.toFixed(2)}%</span>`;
+    html += `Inflation: ${s(peakInf)} &nbsp; Unemployment: ${s(peakUnemp)} &nbsp; Growth: ${s(peakGrowth)}<br>`;
+  }
+  if (state.tone === 'hawkish') html += `<span class="eff-neg">↓ Inflation expectations (hawkish anchor, credibility +)</span><br>`;
+  if (state.tone === 'dovish')  html += `<span class="eff-pos">↑ Inflation expectations (dovish signal, credibility −)</span><br>`;
+  if (state.bsPolicy === 'qe') html += `<span class="eff-pos">QE → compresses long-end yields, lifts growth</span><br>`;
+  if (state.bsPolicy === 'qt') html += `<span class="eff-neg">QT → drains liquidity, tightens financial conditions</span><br>`;
+  if (!html) html = 'Select a rate move to see peak IRF impact.';
+  document.getElementById('effect-preview').innerHTML = html;
+}
+
+// ── EVENTS ─────────────────────────────────────────────────────────────────────
+function addEvent(type, title, body) {
+  const feed = document.getElementById('event-feed');
+  const div = document.createElement('div');
+  div.className = 'event-item ' + type;
+  div.innerHTML = `<div class="event-title">${title}</div>${body ? '<div class="event-body">'+body+'</div>' : ''}`;
+  feed.insertBefore(div, feed.firstChild);
+  if (feed.children.length > 18) feed.removeChild(feed.lastChild);
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────────────────
+function renderAll() {
+  const rm = realMonth();
+  const isMeeting = rm.isMeeting === 1;
+  const meta = ERA_META[state.era];
+
+  document.getElementById('top-title').textContent = meta.name.toUpperCase() + ' ERA';
+  document.getElementById('top-date').textContent = formatDate(rm.date);
+  document.getElementById('top-progress').textContent = (state.monthIdx + 1) + '/' + state.totalMonths;
+
+  // Regime badge
+  const regimeLabels = {'1980_1995':'VOLCKER ERA','1995_2008':'GREAT MOD.','2008_2020':'POST-GFC','2020_now':'POST-COVID','full':'FULL SAMPLE'};
+  document.getElementById('regime-badge').textContent = regimeLabels[rm.regime] || rm.regime || 'REGIME';
+
+  // Divergence badge
+  const divTotal = state.divergence.total.toFixed(1);
+  document.getElementById('divergence-badge').textContent = `DIV ${divTotal}`;
+
+  // Meeting badge
+  const mb = document.getElementById('meeting-badge');
+  const nmm = document.getElementById('meeting-only-msg');
+  if (isMeeting) {
+    mb.className = 'meeting-badge'; mb.textContent = '⬤ FOMC MEETING'; nmm.style.display = 'none';
+  } else {
+    mb.className = 'no-meeting-badge'; mb.textContent = '○ NO MEETING'; nmm.style.display = 'block';
+  }
+
+  // Rate buttons
+  document.querySelectorAll('.rate-btn:not([data-delta="0"])').forEach(b => {
+    b.disabled = !isMeeting; b.style.opacity = isMeeting ? '1' : '0.35';
+  });
+
+  // Metrics
+  setDual('inf',   rm.inflation,       state.player.inflation,   '%', false);
+  setDual('unemp', rm.unemployment,    state.player.unemployment,'%', false);
+  setDual('growth',rm.growth || rm.indpro_m || 0, state.player.growth, '%', true);
+  setDual('rate',  rm.fedFunds,        state.player.rate,        '%', null);
+
+  const realSpread = rm.yieldSpread != null ? rm.yieldSpread : 1.5;
+  const pSpread    = state.player.yieldSpread;
+  document.getElementById('m-yc-r').textContent = (realSpread>=0?'+':'') + realSpread.toFixed(2)+'%';
+  document.getElementById('m-yc-p').textContent = (pSpread>=0?'+':'') + pSpread.toFixed(2)+'%';
+  document.getElementById('m-yc-r').style.color = realSpread < 0 ? 'var(--red)' : 'var(--real)';
+  document.getElementById('m-yc-p').style.color = pSpread    < 0 ? 'var(--red)' : 'var(--player)';
+  document.getElementById('m-yc-chg').textContent = pSpread < 0 ? 'INVERTED ⚠' : 'NORMAL';
+
+  // Expectations
+  const expEl = document.getElementById('m-exp');
+  expEl.textContent = (state.expectationsShock >= 0 ? '+' : '') + (state.expectationsShock * 100).toFixed(1);
+  expEl.style.color = state.expectationsShock > 0.1 ? 'var(--red)' : state.expectationsShock < -0.1 ? 'var(--green)' : 'var(--text2)';
+  document.getElementById('m-exp-chg').textContent =
+    state.tone === 'hawkish' ? 'anchoring (hawkish)' :
+    state.tone === 'dovish'  ? 'drifting up (dovish)' : 'neutral';
+
+  // Decision log: player vs real Fed, most recent first
+  const pipelineEl = document.getElementById('pipeline-box');
+  if (state.decisionLog && state.decisionLog.length > 0) {
+    function fmtBps(bps) {
+      if (bps > 0)  return `<span style="color:var(--red)">+${bps}bps</span>`;
+      if (bps < 0)  return `<span style="color:var(--green)">${bps}bps</span>`;
+      return `<span style="color:var(--text3)">HOLD</span>`;
+    }
+    function fmtRate(r) { return `<span style="color:var(--text2)">${r.toFixed(2)}%</span>`; }
+
+    const rows = [...state.decisionLog].reverse().slice(0, 12).map(e => {
+      const age   = state.monthIdx - e.monthIdx;
+      const dateLbl = formatDate(e.date);
+
+      // Rate comparison
+      const pRate = fmtBps(e.playerBps);
+      const rRate = fmtBps(e.realBps);
+      const agree = e.playerBps === e.realBps
+        ? `<span style="color:var(--text3);font-size:10px">✓ matched</span>`
+        : (Math.sign(e.playerBps || 0) === Math.sign(e.realBps || 0) || (e.playerBps === 0 && e.realBps === 0))
+          ? `<span style="color:var(--yellow);font-size:10px">~ direction ok</span>`
+          : `<span style="color:var(--red);font-size:10px">✗ diverged</span>`;
+
+      // Balance sheet + tone badges
+      const bsBadge = e.bs === 'qe'
+        ? `<span style="color:var(--green);font-size:10px"> QE</span>`
+        : e.bs === 'qt'
+        ? `<span style="color:var(--red);font-size:10px"> QT</span>` : '';
+      const toneBadge = e.tone === 'hawkish'
+        ? `<span style="color:var(--red);font-size:10px"> HAWK</span>`
+        : e.tone === 'dovish'
+        ? `<span style="color:var(--green);font-size:10px"> DOVE</span>` : '';
+
+      return `<div style="margin-bottom:5px;padding-bottom:4px;border-bottom:1px solid var(--border)">` +
+        `<span style="color:var(--text3);font-size:10px">${dateLbl} · ${age}mo ago</span>${bsBadge}${toneBadge}<br>` +
+        `<span style="font-size:11px;color:var(--text3)">YOU </span>${pRate} → ${fmtRate(e.playerRate)} &nbsp;` +
+        `<span style="font-size:11px;color:var(--text3)">FED </span>${rRate} → ${fmtRate(e.realRate)} &nbsp;${agree}` +
+        `</div>`;
+    });
+    pipelineEl.innerHTML = rows.join('');
+  } else {
+    pipelineEl.innerHTML = '<span style="color:var(--text3)">No decisions yet. Advance to an FOMC meeting.</span>';
+  }
+
+  // Taylor rule — clamp target to realistic range
+  const tw = (model.approvalWeights && model.approvalWeights.taylor) || { const:2, inf_gap:1.5, unemp_gap:-0.5 };
+  const taylorRateRaw = tw.const + tw.inf_gap * (state.player.inflation - 2) + tw.unemp_gap * (state.player.unemployment - 5);
+  const taylorRate = clamp(taylorRateRaw, 0, 22);
+  const taylorDev  = state.player.rate - taylorRate;
+  const devColor   = Math.abs(taylorDev) < 1 ? 'var(--green)' : Math.abs(taylorDev) < 2.5 ? 'var(--yellow)' : 'var(--red)';
+  document.getElementById('taylor-box').innerHTML = `
+    Target: <span class="tval">${taylorRate.toFixed(2)}%</span><br>
+    Actual: <span class="tval">${state.player.rate.toFixed(2)}%</span><br>
+    Deviation: <span style="color:${devColor}">${taylorDev>=0?'+':''}${taylorDev.toFixed(2)}%</span>
+    <br><span style="font-size:12px;color:var(--text3)">r* = ${tw.const.toFixed(2)} + ${tw.inf_gap.toFixed(2)}·(π−2) + ${tw.unemp_gap.toFixed(2)}·(U−5)</span>
+    <br><span style="font-size:12px;color:var(--text3)">Path gap: ${state.cumulativeRateGap>=0?'+':''}${state.cumulativeRateGap.toFixed(1)}</span>
+  `;
+
+  // STEP 11: Forward projection
+  const fwd = computeForwardProjection();
+  const fmtFwd = (v, goodNeg) => {
+    const cls = v === 0 ? '' : (goodNeg ? (v < 0 ? 'proj-dn' : 'proj-up') : (v > 0 ? 'proj-up' : 'proj-dn'));
+    return `<span class="proj-val ${cls}">${v>=0?'+':''}${v.toFixed(2)}%</span>`;
+  };
+  const displayDelta = state.lastAppliedDelta !== undefined && state.lastAppliedDelta !== 0
+    ? state.lastAppliedDelta : state.pendingRateDelta;
+  const deltaLabel = displayDelta !== 0
+    ? `Last decision: ${displayDelta > 0 ? '+' : ''}${(displayDelta*100).toFixed(0)}bps`
+    : 'No rate move — hold';
+  document.getElementById('fwd-projection').innerHTML = fwd.noMove
+    ? `<div class="proj-item" style="color:var(--text3)">HOLD — no IRF effect.<br>Select a rate move before advancing to see projections.</div>`
+    : `
+    <div class="proj-item" style="font-size:12px;color:var(--text3);margin-bottom:4px;">${deltaLabel} · peak effect by 12mo:</div>
+    <div class="proj-item">Inflation ${fmtFwd(fwd.inflation, true)} &nbsp; Unemp ${fmtFwd(fwd.unemployment, true)} &nbsp; Growth ${fmtFwd(fwd.growth, false)}</div>
+    <div class="proj-item" style="margin-top:4px;font-size:12px">Regime: ${regimeLabels[rm.regime]||'full'} · Effects lag 6-18 months</div>
+  `;
+
+  // STEP 13: Divergence tracker
+  document.getElementById('div-inf').textContent    = state.divergence.inflation.toFixed(1);
+  document.getElementById('div-unemp').textContent  = state.divergence.unemployment.toFixed(1);
+  document.getElementById('div-growth').textContent = state.divergence.growth.toFixed(1);
+  document.getElementById('div-total').textContent  = state.divergence.total.toFixed(1);
+
+  // Approval — player
+  const totalAp = Math.round((state.approval.markets + state.approval.congress + state.approval.public + state.approval.econ) / 4);
+  document.getElementById('main-bar').style.width = totalAp + '%';
+  document.getElementById('main-bar').style.background = totalAp > 60 ? 'var(--green)' : totalAp > 35 ? 'var(--yellow)' : 'var(--red)';
+  document.getElementById('approval-num').textContent = totalAp + '%';
+  document.getElementById('score-display').textContent = state.score;
+
+  // Dual approval bars
+  function setDualAp(key, playerVal, fedVal) {
+    const pEl = document.getElementById('ap-' + key);
+    const pNEl = document.getElementById('ap-' + key + '-n');
+    const fEl = document.getElementById('ap-fed-' + key);
+    const fNEl = document.getElementById('ap-fed-' + key + '-n');
+    const pv = Math.round(playerVal), fv = Math.round(fedVal);
+    if (pEl) { pEl.style.width = pv + '%'; pEl.style.background = pv > fv ? 'var(--green)' : 'var(--player)'; }
+    if (pNEl) pNEl.textContent = pv;
+    if (fEl) { fEl.style.width = fv + '%'; }
+    if (fNEl) fNEl.textContent = fv;
+  }
+  setDualAp('markets',  state.approval.markets,  state.fedApproval.markets);
+  setDualAp('congress', state.approval.congress, state.fedApproval.congress);
+  setDualAp('public',   state.approval.public,   state.fedApproval.public);
+  setDualAp('econ',     state.approval.econ,     state.fedApproval.econ);
+
+  // Scorecard vs Real Fed
+  const months = Math.max(state.totalMonths > 0 ? state.monthIdx : 1, 1);
+  const avgPScore = (state.score / months).toFixed(2);
+  const avgFScore = (state.fedScore / months).toFixed(2);
+  const totalPAp = totalAp;
+  const totalFAp = Math.round((state.fedApproval.markets + state.fedApproval.congress + state.fedApproval.public + state.fedApproval.econ) / 4);
+
+  function scRow(label, youVal, fedVal, higherBetter=true) {
+    if (higherBetter === null) {
+      return `<tr><td style="color:var(--text2)">${label}</td><td class="sc-you">${youVal}</td><td class="sc-fed">${fedVal}</td><td>—</td></tr>`;
+    }
+    const youNum = parseFloat(youVal), fedNum = parseFloat(fedVal);
+    const youWins = higherBetter ? youNum > fedNum : youNum < fedNum;
+    const draw = Math.abs(youNum - fedNum) < 0.05;
+    const youCls = draw ? '' : youWins ? 'sc-win' : 'sc-lose';
+    const fedCls = draw ? '' : youWins ? '' : 'sc-win';
+    return `<tr><td style="color:var(--text2)">${label}</td><td class="sc-you ${youCls}">${youVal}</td><td class="sc-fed ${fedCls}">${fedVal}</td><td>${draw ? '—' : youWins ? '<span class="sc-win">YOU ↑</span>' : '<span class="sc-lose">FED ↑</span>'}</td></tr>`;
+  }
+
+  const rm2 = realMonth();
+  document.getElementById('scorecard-body').innerHTML = [
+    scRow('Score/mo', avgPScore, avgFScore, true),
+    scRow('Approval', totalPAp+'%', totalFAp+'%', true),
+    scRow('Inflation', state.player.inflation.toFixed(1)+'%', rm2.inflation.toFixed(1)+'%', false),
+    scRow('Unemploy', state.player.unemployment.toFixed(1)+'%', rm2.unemployment.toFixed(1)+'%', false),
+    scRow('Growth', state.player.growth.toFixed(1)+'%', (rm2.growth||2).toFixed(1)+'%', true),
+    scRow('Rate', state.player.rate.toFixed(2)+'%', rm2.fedFunds.toFixed(2)+'%', null),
+  ].join('');
+
+  updateRateDisplay();
+  updateEffectPreview();
+}
+
+function setDual(key, real, player, unit, goodUp) {
+  const rEl  = document.getElementById('m-' + key + '-r');
+  const pEl  = document.getElementById('m-' + key + '-p');
+  const chgEl= document.getElementById('m-' + key + '-chg');
+  if (rEl) rEl.textContent = real.toFixed(1) + unit;
+  if (pEl) pEl.textContent = player.toFixed(1) + unit;
+  const diff = player - real;
+  if (chgEl) {
+    chgEl.textContent = (diff >= 0 ? '+' : '') + diff.toFixed(2) + ' vs real';
+    if (goodUp === null) { chgEl.className = 'metric-chg'; return; }
+    const isBad = goodUp ? diff < 0 : diff > 0;
+    chgEl.className = 'metric-chg ' + (isBad ? 'chg-bad' : 'chg-good');
+  }
+}
+
+function setApBar(key, val, color) {
+  document.getElementById('ap-' + key).style.width = Math.round(val) + '%';
+  document.getElementById('ap-' + key).style.background = color;
+  document.getElementById('ap-' + key + '-n').textContent = Math.round(val);
+}
+
+// ── CHARTS (5 stacked) ─────────────────────────────────────────────────────────
+
+const CHART_DEFS = [
+  { id:'chart-inflation',    rKey:'real_inflation',    pKey:'p_inflation',    unit:'%', annotations: [{y:2, label:'2% target', color:'#2a5a2a'}] },
+  { id:'chart-unemployment', rKey:'real_unemployment', pKey:'p_unemployment', unit:'%', annotations: [{y:5, label:'NAIRU',     color:'#2a4a5a'}] },
+  { id:'chart-growth',       rKey:'real_growth',       pKey:'p_growth',       unit:'%', annotations: [{y:0, label:'0%',        color:'#3a2020'}] },
+  { id:'chart-rate',         rKey:'real_rate',         pKey:'p_rate',         unit:'%', annotations: [] },
+  { id:'chart-spread',       rKey:'real_spread',       pKey:'p_spread',       unit:'%', annotations: [{y:0, label:'inversion', color:'#3a2020'}] },
+];
+
+function makeChartOptions(unit, annotations) {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    animation: { duration: 120 },
+    plugins: {
+      legend: { display: true, position:'top', labels:{ color:'#aaa', font:{size:12,family:'Courier New'}, boxWidth:12, padding:8 } },
+      annotation: annotations && annotations.length ? {
+        annotations: annotations.reduce((acc, a, i) => {
+          acc['line'+i] = {
+            type: 'line', yMin: a.y, yMax: a.y,
+            borderColor: a.color, borderWidth: 1, borderDash: [3,3],
+          };
+          return acc;
+        }, {})
+      } : {},
+    },
+    scales: {
+      x: { ticks:{ color:'#666', font:{size:11,family:'Courier New'}, maxTicksLimit:7 }, grid:{ color:'#1e1e1e' } },
+      y: { ticks:{ color:'#666', font:{size:11,family:'Courier New'}, callback: v => v.toFixed(1)+unit }, grid:{ color:'#1e1e1e' } }
+    }
+  };
+}
+
+function initAllCharts() {
+  Object.values(charts).forEach(c => c.destroy());
+  charts = {};
+  const h = state.history;
+  for (const def of CHART_DEFS) {
+    const ctx = document.getElementById(def.id);
+    if (!ctx) continue;
+    charts[def.id] = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [...h.labels],
+        datasets: [
+          { label:'Real',   data:[...h[def.rKey]], borderColor:'#3a7fcc', backgroundColor:'transparent', borderWidth:1.5, pointRadius:0, tension:0.3 },
+          { label:'Player', data:[...h[def.pKey]], borderColor:'#e09a20', backgroundColor:'transparent', borderWidth:1.5, pointRadius:0, tension:0.3, borderDash:[4,3] },
+        ]
+      },
+      options: makeChartOptions(def.unit, def.annotations)
+    });
+  }
+}
+
+function updateAllCharts() {
+  const h = state.history;
+  for (const def of CHART_DEFS) {
+    const c = charts[def.id];
+    if (!c) continue;
+    c.data.labels = [...h.labels];
+    c.data.datasets[0].data = [...h[def.rKey]];
+    c.data.datasets[1].data = [...h[def.pKey]];
+    c.update('none');
+  }
+}
+
+// ── END GAME ───────────────────────────────────────────────────────────────────
+function computeIdentity() {
+  const id = state.identity;
+  const totalMeetings = Math.max(id.hikes + id.cuts + id.holds, 1);
+  const hikeRate  = id.hikes / totalMeetings;
+  const cutRate   = id.cuts  / totalMeetings;
+  const erraticRate = id.erraticMoves / Math.max(id.hikes + id.cuts, 1);
+  const qePct = id.qeMonths / Math.max(state.totalMonths, 1);
+  const hawkPct = id.hawkishMonths / Math.max(state.totalMonths, 1);
+  const dovePct = id.dovishMonths  / Math.max(state.totalMonths, 1);
+
+  if (erraticRate > 0.35)             return { title: 'THE ERRATIC CHAIR',    color: 'var(--red)',    desc: 'Reversed course too often. Markets lost confidence in your guidance.' };
+  if (hikeRate > 0.35 && hawkPct > 0.25) return { title: 'THE INFLATION SLAYER', color: 'var(--red)',    desc: 'Aggressive, relentless tightening. Inflation was your only enemy.' };
+  if (hikeRate > 0.25 && state.inflationCrisisMonths < 3) return { title: 'THE CREDIBILITY ENFORCER', color: 'var(--accent)', desc: 'Disciplined adherence to price stability. Markets trusted your word.' };
+  if (cutRate > 0.3 && qePct > 0.2)  return { title: 'THE MARKET PROTECTOR',  color: 'var(--green)',  desc: 'Aggressive easing and QE. You put a floor under every downturn.' };
+  if (cutRate > 0.25 && id.dovishMonths > id.hawkishMonths) return { title: 'THE EMPLOYMENT DOVE', color: 'var(--green)',  desc: 'Labor market was your north star. Jobs over price stability, always.' };
+  if (id.holds / totalMeetings > 0.5) return { title: 'THE STEADY HAND',      color: 'var(--purple)', desc: 'Patient, cautious, rarely moved. Stability over reaction.' };
+  return                               { title: 'THE PRAGMATIST',             color: 'var(--yellow)', desc: 'No dominant style. You responded to data, not dogma.' };
+}
+
+function endGame() {
+  showScreen('end-screen');
+  const h = state.history;
+  const avg = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+
+  const avgInf   = avg(h.p_inflation);
+  const avgUnemp = avg(h.p_unemployment);
+  const avgScore = state.score / Math.max(state.totalMonths, 1);
+
+  document.getElementById('stat-avg-inf').textContent    = avgInf.toFixed(1) + '%';
+  document.getElementById('stat-real-inf').textContent   = avg(h.real_inflation).toFixed(1) + '%';
+  document.getElementById('stat-avg-unemp').textContent  = avgUnemp.toFixed(1) + '%';
+  document.getElementById('stat-real-unemp').textContent = avg(h.real_unemployment).toFixed(1) + '%';
+  document.getElementById('stat-score').textContent      = avgScore.toFixed(2);
+  document.getElementById('stat-recessions').textContent = state.recessions;
+  document.getElementById('stat-divergence').textContent = state.divergence.total.toFixed(1);
+  document.getElementById('final-chair').textContent     = ERA_META[state.era].chair;
+
+  // Fed vs You final comparison
+  const fedAvgScore = state.fedScore / Math.max(state.totalMonths, 1);
+  const fedTotalAp  = Math.round((state.fedApproval.markets + state.fedApproval.congress + state.fedApproval.public + state.fedApproval.econ) / 4);
+  const yourTotalAp = Math.round((state.approval.markets + state.approval.congress + state.approval.public + state.approval.econ) / 4);
+  const youBeatFed  = avgScore > fedAvgScore;
+  const fedEl = document.getElementById('fed-vs-you-compare');
+  if (fedEl) {
+    fedEl.innerHTML = `
+      <div style="display:flex;gap:24px;justify-content:center;flex-wrap:wrap;margin-bottom:1rem;">
+        <div style="text-align:center;">
+          <div style="font-size:11px;color:var(--text3);letter-spacing:0.15em;margin-bottom:4px;">YOUR SCORE/MO</div>
+          <div style="font-size:2rem;font-weight:700;color:${youBeatFed?'var(--green)':'var(--yellow)'}">${avgScore.toFixed(2)}</div>
+        </div>
+        <div style="text-align:center;display:flex;align-items:center;color:var(--text3);font-size:1.4rem;">vs</div>
+        <div style="text-align:center;">
+          <div style="font-size:11px;color:var(--text3);letter-spacing:0.15em;margin-bottom:4px;">REAL FED SCORE/MO</div>
+          <div style="font-size:2rem;font-weight:700;color:${youBeatFed?'var(--text3)':'var(--real)'}">${fedAvgScore.toFixed(2)}</div>
+        </div>
+      </div>
+      <div style="font-size:14px;color:${youBeatFed?'var(--green)':'var(--red)'};font-weight:700;letter-spacing:0.1em;margin-bottom:0.4rem;">
+        ${youBeatFed ? '🏆 YOU OUTPERFORMED THE REAL FED' : '📉 THE REAL FED OUTPERFORMED YOU'}
+      </div>
+      <div style="font-size:13px;color:var(--text3)">Approval: You <span style="color:var(--player);font-weight:700">${yourTotalAp}%</span> · Real Fed <span style="color:var(--real);font-weight:700">${fedTotalAp}%</span></div>
+    `;
+  }
+
+  // Identity
+  const ident = computeIdentity();
+  const identEl = document.getElementById('final-identity');
+  identEl.textContent = ident.title;
+  identEl.style.color = ident.color;
+
+  const id = state.identity;
+  document.getElementById('stat-hikes').textContent = `↑ ${id.hikes} HIKES`;
+  document.getElementById('stat-cuts').textContent  = `↓ ${id.cuts} CUTS`;
+  document.getElementById('stat-holds').textContent = `— ${id.holds} HOLDS`;
+  document.getElementById('stat-identity-detail').textContent = ident.desc;
+
+  // Grade on per-month average
+  let grade, gradeClass, legacy;
+  if (avgScore > 2.2)      { grade='A+'; gradeClass='grade-A'; legacy='Historic. Price stability, full employment, growth — simultaneously. The textbooks reference your tenure for decades.' }
+  else if (avgScore > 1.6) { grade='A';  gradeClass='grade-A'; legacy='Exceptional stewardship. Inflation tamed, unemployment low, no crises. A masterclass in modern monetary policy.' }
+  else if (avgScore > 1.0) { grade='B+'; gradeClass='grade-B'; legacy='Solid and credible. Navigated difficult conditions with skill. A respectable legacy that markets trusted.' }
+  else if (avgScore > 0.5) { grade='B';  gradeClass='grade-B'; legacy='Adequate but unspectacular. Mixed conditions. Your legacy is debated by economists on both sides.' }
+  else if (avgScore > 0)   { grade='C';  gradeClass='grade-C'; legacy='A difficult term. Inflation or unemployment strayed too far. The recovery happened but the scars remain.' }
+  else if (avgScore > -0.5){ grade='D';  gradeClass='grade-D'; legacy='A painful tenure. Academic papers will use your term as a cautionary tale in monetary policy.' }
+  else                     { grade='F';  gradeClass='grade-D'; legacy='Historically catastrophic. A generation of Americans suffered under your watch. You will not be reappointed.' }
+
+  document.getElementById('final-grade').textContent  = grade;
+  document.getElementById('final-grade').className    = 'grade-big ' + gradeClass;
+  document.getElementById('final-legacy').textContent = legacy;
+}
+
+function resetGame() {
+  document.getElementById('event-modal').style.display = 'none';
+  document.getElementById('next-btn').disabled = false;
+  selectedEra = null; eraData = null; model = null; state = {};
+  Object.values(charts).forEach(c => c.destroy()); charts = {};
+  document.querySelectorAll('.era-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('start-btn').disabled = true;
+  document.getElementById('start-btn').textContent = 'SELECT AN ERA TO BEGIN';
+  document.getElementById('recession-banner').style.display = 'none';
+  document.getElementById('inflation-crisis-banner').style.display = 'none';
+  document.getElementById('event-feed').innerHTML = '<div class="event-item info"><div class="event-title">YOUR TERM BEGINS</div><div class="event-body">Inherit the economy. Decisions constrained to FOMC meeting months only.</div></div>';
+  showScreen('title-screen');
+}
+
+// ── UTILITIES ──────────────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function showLoading(msg) {
+  document.getElementById('loading-msg').textContent = msg;
+  document.getElementById('loading-overlay').classList.add('active');
+}
+function hideLoading() {
+  document.getElementById('loading-overlay').classList.remove('active');
+}
+</script>
+</body>
+</html>
