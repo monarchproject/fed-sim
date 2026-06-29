@@ -1,8 +1,9 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>FED CHAIR — Monetary Policy Simulation</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
@@ -553,468 +554,643 @@
     .cockpit-badges { justify-content:flex-start; }
   }
 
+
+
+  /* ── CODE LAYOUT PATCH: compact 4-column desktop cockpit ────────────────
+     This is an implementation change, not a mockup. On wide screens the UI uses:
+     controls | compact chart studio | intelligence column A | intelligence column B.
+     Charts are smaller and arranged in a 2-column grid to reduce scrolling. */
+  @media (min-width: 1350px) {
+    html, body { height: 100%; overflow: hidden; }
+    #game-screen { height: 100vh; }
+    .top-bar { min-height: 34px; padding: 5px 10px; gap: 8px; }
+    .game-body {
+      grid-template-columns: minmax(275px, 305px) minmax(520px, 0.92fr) minmax(540px, 660px) !important;
+      height: calc(100vh - 36px);
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .left-panel {
+      padding: 7px;
+      gap: 6px;
+      overflow-y: auto;
+    }
+    .mission-box { padding: 7px 9px; margin-bottom: 6px !important; }
+    .mission-title { font-size: 11px; margin-bottom: 2px; }
+    .mission-body { font-size: 11px; line-height: 1.35; }
+    .mission-progress { height: 6px; margin-top: 5px; }
+    .metrics-grid { gap: 4px; }
+    .metric { padding: 5px 6px; border-width: 1px; }
+    .metric-label { font-size: 9px; margin-bottom: 2px; }
+    .metric-real { font-size: 17px; }
+    .metric-player { font-size: 13px; }
+    .metric-chg { font-size: 10px; }
+    .controls-box { padding: 7px; border-width: 1px; }
+    .rate-display { font-size: 2rem; }
+    .rate-preview { font-size: 12px; margin-bottom: 5px; }
+    .rate-controls { gap: 3px; }
+    .rate-btn { padding: 5px 6px; font-size: 12px; }
+    .qe-btn, .tone-btn { padding: 6px 5px; font-size: 12px; }
+    .effect-preview { padding: 6px 7px; font-size: 11px; line-height: 1.45; margin-bottom: 7px; }
+    .next-btn { padding: 9px; font-size: 15px; }
+
+    .center-panel {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-auto-rows: max-content;
+      align-content: start;
+      gap: 6px;
+      padding: 6px;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    .center-panel > .crisis-bar,
+    .center-panel > .cockpit-hero,
+    .center-panel > .chart-tabs,
+    .center-panel > .chart-deck,
+    .center-panel > .char-popup {
+      grid-column: 1 / -1;
+    }
+    .crisis-bar { gap: 5px; }
+    .recession-banner, .inflation-crisis-banner { padding: 5px 8px; font-size: 12px; }
+
+    .cockpit-hero {
+      padding: 7px;
+      gap: 6px;
+      border-width: 1px;
+    }
+    .cockpit-hero-head { gap: 6px; }
+    .cockpit-kicker { font-size: 9px; }
+    .cockpit-title { font-size: 14px; }
+    .cockpit-sub { font-size: 10.5px; line-height: 1.3; margin-top: 2px; }
+    .source-pill { font-size: 8px; padding: 1px 5px; }
+    .cockpit-grid { grid-template-columns: 1fr 1fr; gap: 6px; min-height: 0; }
+    .cockpit-card { padding: 6px; border-radius: 5px; }
+    .cockpit-card-title { font-size: 9px; margin-bottom: 4px; }
+    .cockpit-chart { height: 86px; min-height: 86px; }
+    .decision-snapshot { gap: 4px; }
+    .decision-tile { padding: 5px; }
+    .decision-tile-lbl { font-size: 8px; }
+    .decision-tile-val { font-size: 13px; }
+    .decision-tile-note { font-size: 9px; }
+    .surprise-strip { margin-top: 5px; padding-top: 5px; font-size: 10.5px; }
+    .chart-mini-note { font-size: 9px; margin-top: 3px; }
+
+    .chart-tabs { gap: 5px; }
+    .chart-tab { padding: 4px 8px; font-size: 9.5px; }
+    .chart-deck { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+    .chart-block {
+      padding: 6px;
+      border-width: 1px;
+      border-radius: 5px;
+      min-height: 0;
+    }
+    .chart-block-header { margin-bottom: 4px; }
+    .chart-title { font-size: 10.5px; letter-spacing: 0.11em; }
+    .chart-subtitle { font-size: 9px; }
+    .chart-wrap { height: 102px !important; min-height: 102px !important; }
+    .center-panel.deck-macro > .chart-block { display: block; }
+    .center-panel.deck-market > .chart-block,
+    .center-panel.deck-player > .chart-block,
+    .center-panel.deck-audit > .chart-block { display: none; }
+    .decision-ledger { max-height: 145px; }
+    .audit-grid { grid-template-columns: repeat(4, minmax(0,1fr)); gap: 6px; }
+    .audit-card { min-height: 72px; padding: 7px; }
+    .audit-title { font-size: 10px; margin-bottom: 4px; }
+    .audit-body { font-size: 10px; line-height: 1.35; }
+
+    .char-popup.active {
+      padding: 8px 10px;
+      gap: 8px;
+      margin-bottom: 0;
+    }
+    .char-avatar { width: 40px; height: 40px; font-size: 2rem; }
+    .char-name { font-size: 10px; }
+    .char-quote { font-size: 11px; line-height: 1.35; }
+    .char-dismiss { display: none; }
+
+    .right-panel {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-auto-rows: max-content;
+      align-content: start;
+      gap: 6px;
+      padding: 6px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      border-left: 2px solid var(--border);
+      background: var(--bg1);
+    }
+    .side-card {
+      min-width: 0;
+      background: rgba(255,255,255,0.018);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px;
+      overflow: hidden;
+    }
+    .side-card .section-label {
+      margin: 0 0 5px 0;
+      font-size: 9.5px;
+      letter-spacing: 0.16em;
+    }
+    .side-card .info-box,
+    .side-card .advisor-card {
+      border-width: 1px;
+      padding: 6px 7px;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+    .advisor-grid { gap: 5px; }
+    .advisor-card { min-height: 0; }
+    .advisor-name { font-size: 8.5px; margin-bottom: 2px; }
+    .advisor-quote { font-size: 10.5px; line-height: 1.35; }
+    .pricing-grid, .reaction-grid { gap: 4px; margin-bottom: 5px; }
+    .pricing-cell, .reaction-cell { padding: 5px; }
+    .pricing-lbl, .reaction-lbl { font-size: 8px; }
+    .pricing-val, .reaction-val { font-size: 12px; }
+    .pricing-note, .reaction-note { font-size: 10.5px; line-height: 1.35; padding-top: 5px; }
+    .pricing-outcome { margin: 3px 0; font-size: 10px; }
+    .pricing-outcome-name { width: 56px; }
+    .pricing-outcome-prob { width: 34px; }
+    .proj-item, .div-row { font-size: 11px; }
+    .dual-ap-row { font-size: 10.5px; margin-bottom: 4px; }
+    .dual-ap-label { min-width: 58px; font-size: 10px; }
+    .dual-bar-bg { height: 5px; }
+    .scorecard { font-size: 10px; }
+    .scorecard th { font-size: 8px; padding: 2px 3px; }
+    .scorecard td { padding: 2px 3px; font-size: 10px; }
+    .achievement-badge { font-size: 9px; padding: 2px 6px; }
+    .event-item { padding: 6px 7px; margin-bottom: 5px; font-size: 11px; line-height: 1.35; border-left-width: 3px; }
+    .event-title { font-size: 11px; margin-bottom: 2px; }
+    .event-body { font-size: 10.5px; line-height: 1.35; }
+
+    .side-card-fomc-advisors { grid-row: span 2; }
+    .side-card-real-market-pricing-before-fomc,
+    .side-card-market-reaction { grid-column: auto; }
+    .side-card-active-policy-pipeline,
+    .side-card-taylor-rule,
+    .side-card-12-month-projection,
+    .side-card-divergence-from-reality { min-height: 0; }
+    .side-card-approval-ratings-you-vs-real-fed,
+    .side-card-scorecard-vs-real-fed,
+    .side-card-achievements,
+    .side-card-event-log { grid-column: 1 / -1; }
+    .side-card-event-log #event-feed { max-height: 145px; overflow-y: auto; padding-right: 2px; }
+  }
+
+  @media (min-width: 1600px) {
+    .game-body {
+      grid-template-columns: minmax(290px, 320px) minmax(560px, 0.9fr) minmax(650px, 760px) !important;
+    }
+    .chart-wrap { height: 112px !important; min-height: 112px !important; }
+    .cockpit-chart { height: 96px; min-height: 96px; }
+  }
+
+  @media (min-width: 1350px) and (max-height: 820px) {
+    .chart-wrap { height: 86px !important; min-height: 86px !important; }
+    .cockpit-chart { height: 72px; min-height: 72px; }
+    .cockpit-sub, .chart-mini-note { display: none; }
+    .mission-box { display: none; }
+    .metric-real { font-size: 15px; }
+    .metric-player { font-size: 12px; }
+  }
 </style>
 </head>
 <body>
-
 <div class="loading-overlay" id="loading-overlay">
-  <div style="font-size:1.2rem;font-weight:700;letter-spacing:0.3em;">FED CHAIR</div>
-  <div class="loading-text loading-dots" id="loading-msg">LOADING HISTORICAL DATA</div>
+<div style="font-size:1.2rem;font-weight:700;letter-spacing:0.3em;">FED CHAIR</div>
+<div class="loading-text loading-dots" id="loading-msg">LOADING HISTORICAL DATA</div>
 </div>
-
 <!-- ── TITLE ── -->
-<div id="title-screen" class="screen active">
-  <div class="game-title">FED CHAIR</div>
-  <div class="game-sub">MONETARY POLICY SIMULATION</div>
-  <div class="game-desc">Inherit the economy. Set rates. Make history — or repeat its mistakes.</div>
-  <div class="era-grid" id="era-grid">
-    <div class="era-card" data-era="volcker" onclick="selectEra(this)">
-      <div class="era-name">PAUL VOLCKER</div>
-      <div class="era-years">AUG 1979 — AUG 1987</div>
-      <div class="era-desc">Inflation at 14.8%. Iranian oil shock. Stagflation. Raise rates to crush it — or break the economy trying.</div>
-      <span class="era-diff diff-hard">HARD</span>
-    </div>
-    <div class="era-card" data-era="greenspan" onclick="selectEra(this)">
-      <div class="era-name">ALAN GREENSPAN</div>
-      <div class="era-years">AUG 1987 — FEB 2006</div>
-      <div class="era-desc">Black Monday just happened. S&L crisis. Dotcom boom. 9/11. Navigate two decades as the "Maestro."</div>
-      <span class="era-diff diff-medium">MEDIUM</span>
-    </div>
-    <div class="era-card" data-era="bernanke" onclick="selectEra(this)">
-      <div class="era-name">BEN BERNANKE</div>
-      <div class="era-years">FEB 2006 — FEB 2014</div>
-      <div class="era-desc">The housing bubble is cracking. Financial crisis looms. Invent QE or watch the entire system collapse.</div>
-      <span class="era-diff diff-hard">HARD</span>
-    </div>
-    <div class="era-card" data-era="powell" onclick="selectEra(this)">
-      <div class="era-name">JEROME POWELL</div>
-      <div class="era-years">JAN 2020 — PRESENT</div>
-      <div class="era-desc">COVID hits. Zero rates, $9T balance sheet. Then inflation surges to 9.1%. Fastest hike cycle in 40 years.</div>
-      <span class="era-diff diff-medium">MEDIUM</span>
-    </div>
-  </div>
-  <button class="start-btn" id="start-btn" onclick="startGame()" disabled>SELECT AN ERA TO BEGIN</button>
-  <div style="font-size:0.57rem;color:var(--text3);margin-top:0.9rem;letter-spacing:0.1em;">
+<div class="screen active" id="title-screen">
+<div class="game-title">FED CHAIR</div>
+<div class="game-sub">MONETARY POLICY SIMULATION</div>
+<div class="game-desc">Inherit the economy. Set rates. Make history — or repeat its mistakes.</div>
+<div class="era-grid" id="era-grid">
+<div class="era-card" data-era="volcker" onclick="selectEra(this)">
+<div class="era-name">PAUL VOLCKER</div>
+<div class="era-years">AUG 1979 — AUG 1987</div>
+<div class="era-desc">Inflation at 14.8%. Iranian oil shock. Stagflation. Raise rates to crush it — or break the economy trying.</div>
+<span class="era-diff diff-hard">HARD</span>
+</div>
+<div class="era-card" data-era="greenspan" onclick="selectEra(this)">
+<div class="era-name">ALAN GREENSPAN</div>
+<div class="era-years">AUG 1987 — FEB 2006</div>
+<div class="era-desc">Black Monday just happened. S&amp;L crisis. Dotcom boom. 9/11. Navigate two decades as the "Maestro."</div>
+<span class="era-diff diff-medium">MEDIUM</span>
+</div>
+<div class="era-card" data-era="bernanke" onclick="selectEra(this)">
+<div class="era-name">BEN BERNANKE</div>
+<div class="era-years">FEB 2006 — FEB 2014</div>
+<div class="era-desc">The housing bubble is cracking. Financial crisis looms. Invent QE or watch the entire system collapse.</div>
+<span class="era-diff diff-hard">HARD</span>
+</div>
+<div class="era-card" data-era="powell" onclick="selectEra(this)">
+<div class="era-name">JEROME POWELL</div>
+<div class="era-years">JAN 2020 — PRESENT</div>
+<div class="era-desc">COVID hits. Zero rates, $9T balance sheet. Then inflation surges to 9.1%. Fastest hike cycle in 40 years.</div>
+<span class="era-diff diff-medium">MEDIUM</span>
+</div>
+</div>
+<button class="start-btn" disabled="" id="start-btn" onclick="startGame()">SELECT AN ERA TO BEGIN</button>
+<div style="font-size:0.57rem;color:var(--text3);margin-top:0.9rem;letter-spacing:0.1em;">
     OFFICIAL MACRO DATA + REAL ZQ MARKET PRICING + CALIBRATED SIMULATION
   </div>
 </div>
-
 <!-- ── GAME ── -->
-<div id="game-screen" class="screen">
-  <div class="top-bar">
-    <span class="tl" id="top-title">FED CHAIR</span>
-    <span class="dim">|</span>
-    <span class="val" id="top-date">—</span>
-    <span class="dim">|</span>
-    <span class="dim">MTH</span><span class="val" id="top-progress">1/?</span>
-    <span class="dim">|</span>
-    <span id="meeting-badge" class="meeting-badge">⬤ FOMC MEETING</span>
-    <span class="dim">|</span>
-    <span id="regime-badge" class="regime-badge">REGIME</span>
-    <span class="dim">|</span>
-    <div class="approval-bar">
-      <span class="dim">APPROVAL</span>
-      <div class="bar-bg"><div class="bar-fill" id="main-bar" style="width:50%"></div></div>
-      <span class="val" id="approval-num">50%</span>
-    </div>
-    <span class="dim">|</span>
-    <span class="divergence-badge" id="divergence-badge">DIV 0.0</span>
-    <span class="dim">|</span>
-    <span class="dim">SCORE</span><span class="val" id="score-display">0</span>
-    <span class="dim">|</span>
-    <span class="credibility-pill" id="credibility-pill">CRED 70</span>
-  </div>
-
-  <div class="game-body">
-
-    <!-- LEFT: controls + metrics -->
-    <div class="left-panel">
-      <div>
-        <div class="section-label">Economic Dashboard</div>
-        <div class="track-legend" style="margin-bottom:6px;">
-          <span class="tleg-r">── REAL</span>
-          <span class="tleg-p">── PLAYER</span>
-        </div>
-        <div class="mission-box" id="mission-box" style="margin-bottom:8px;">
-          <div class="mission-title" id="mission-title">MISSION OBJECTIVE</div>
-          <div class="mission-body" id="mission-body">Keep inflation credible without breaking employment.</div>
-          <div class="mission-progress"><div class="mission-fill" id="mission-fill"></div></div>
-        </div>
-        <div class="metrics-grid">
-          <div class="metric">
-            <div class="metric-label">INFLATION (CPI YOY)</div>
-            <div class="metric-dual">
-              <div class="metric-real" id="m-inf-r">--</div>
-              <div class="metric-divider">/</div>
-              <div class="metric-player" id="m-inf-p">--</div>
-            </div>
-            <div class="metric-chg" id="m-inf-chg"></div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">UNEMPLOYMENT</div>
-            <div class="metric-dual">
-              <div class="metric-real" id="m-unemp-r">--</div>
-              <div class="metric-divider">/</div>
-              <div class="metric-player" id="m-unemp-p">--</div>
-            </div>
-            <div class="metric-chg" id="m-unemp-chg"></div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">GROWTH (IP PROXY)</div>
-            <div class="metric-dual">
-              <div class="metric-real" id="m-growth-r">--</div>
-              <div class="metric-divider">/</div>
-              <div class="metric-player" id="m-growth-p">--</div>
-            </div>
-            <div class="metric-chg" id="m-growth-chg"></div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">FED FUNDS RATE</div>
-            <div class="metric-dual">
-              <div class="metric-real" id="m-rate-r">--</div>
-              <div class="metric-divider">/</div>
-              <div class="metric-player" id="m-rate-p">--</div>
-            </div>
-            <div class="metric-chg" id="m-rate-chg"></div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">YIELD SPREAD (10Y-2Y)</div>
-            <div class="metric-dual">
-              <div class="metric-real" id="m-yc-r">--</div>
-              <div class="metric-divider">/</div>
-              <div class="metric-player" id="m-yc-p">--</div>
-            </div>
-            <div class="metric-chg" id="m-yc-chg"></div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">EXPECTATIONS INDEX</div>
-            <div class="metric-dual">
-              <div class="metric-real" id="m-exp">--</div>
-            </div>
-            <div class="metric-chg" id="m-exp-chg" style="color:var(--text3)">fwd guidance</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="section-label" style="margin-bottom:0;">Policy Controls</div>
-      <div class="controls-box">
-        <div id="meeting-only-msg" class="meeting-only-msg">NO FOMC MEETING — ADVANCING WITHOUT RATE DECISION</div>
-        <div class="rate-display" id="rate-display">0.00%</div>
-        <div class="rate-preview" id="rate-preview"></div>
-        <div class="sub-label">FEDERAL FUNDS RATE ADJUSTMENT</div>
-        <div class="rate-controls">
-          <button class="rate-btn" data-delta="-1"    onclick="changeRate(-1,this)">−100bps</button>
-          <button class="rate-btn" data-delta="-0.5"  onclick="changeRate(-0.5,this)">−50bps</button>
-          <button class="rate-btn" data-delta="-0.25" onclick="changeRate(-0.25,this)">−25bps</button>
-          <button class="rate-btn selected-rate" data-delta="0" onclick="changeRate(0,this)">HOLD</button>
-          <button class="rate-btn" data-delta="0.25"  onclick="changeRate(0.25,this)">+25bps</button>
-          <button class="rate-btn" data-delta="0.5"   onclick="changeRate(0.5,this)">+50bps</button>
-          <button class="rate-btn" data-delta="1"     onclick="changeRate(1,this)">+100bps</button>
-        </div>
-        <hr class="div-line">
-        <div class="sub-label">BALANCE SHEET POLICY</div>
-        <div class="qe-controls">
-          <div class="qe-btn" id="qe-btn"      onclick="setBS('qe')">QE · BUY</div>
-          <div class="qe-btn active-neutral" id="neutral-btn" onclick="setBS('neutral')">NEUTRAL</div>
-          <div class="qe-btn" id="qt-btn"      onclick="setBS('qt')">QT · SELL</div>
-        </div>
-        <div class="sub-label">FORWARD GUIDANCE TONE</div>
-        <div class="tone-row">
-          <div class="tone-btn" id="tone-dovish"  onclick="setTone('dovish')">DOVISH</div>
-          <div class="tone-btn active-tone" id="tone-neutral" onclick="setTone('neutral')">NEUTRAL</div>
-          <div class="tone-btn" id="tone-hawkish" onclick="setTone('hawkish')">HAWKISH</div>
-        </div>
-        <div class="effect-preview" id="effect-preview">Select a rate move to see projected effects.</div>
-        <button class="next-btn" id="next-btn" onclick="nextMonth()">ADVANCE MONTH →</button>
-      </div>
-    </div>
-
-    <!-- CENTER: stacked charts -->
-    <div class="center-panel deck-macro" id="center-panel">
-      <div class="crisis-bar">
-        <div id="recession-banner" class="recession-banner">⚠ RECESSION — 2 CONSECUTIVE MONTHS NEGATIVE GROWTH</div>
-        <div id="inflation-crisis-banner" class="inflation-crisis-banner">⚠ INFLATION CRISIS — CREDIBILITY AT RISK</div>
-      </div>
-
-
-      <div class="cockpit-hero" id="cockpit-hero">
-        <div class="cockpit-hero-head">
-          <div>
-            <div class="cockpit-kicker" id="cockpit-kicker">FOMC DECISION COCKPIT</div>
-            <div class="cockpit-title" id="cockpit-headline">Read the economy, then surprise the market carefully.</div>
-            <div class="cockpit-sub" id="cockpit-subtitle">Real data feeds the macro board. Your decisions create a simulated alternate path.</div>
-          </div>
-          <div class="cockpit-badges">
-            <span class="source-pill source-real">Real macro</span>
-            <span class="source-pill source-mkt">Real market pricing</span>
-            <span class="source-pill source-sim">Simulated player path</span>
-          </div>
-        </div>
-        <div class="cockpit-grid">
-          <div class="cockpit-card">
-            <div class="cockpit-card-title">Market priced before decision</div>
-            <div class="cockpit-chart"><canvas id="chart-market-dist"></canvas></div>
-            <div class="chart-mini-note" id="market-dist-note">Real sourced probability buckets appear on FOMC months.</div>
-          </div>
-          <div class="cockpit-card">
-            <div class="cockpit-card-title">Decision readout</div>
-            <div class="decision-snapshot" id="decision-snapshot">
-              <div class="decision-tile"><div class="decision-tile-lbl">Market</div><div class="decision-tile-val">—</div><div class="decision-tile-note">waiting</div></div>
-              <div class="decision-tile"><div class="decision-tile-lbl">You</div><div class="decision-tile-val">HOLD</div><div class="decision-tile-note">pending</div></div>
-              <div class="decision-tile"><div class="decision-tile-lbl">Real Fed</div><div class="decision-tile-val">—</div><div class="decision-tile-note">historical move</div></div>
-              <div class="decision-tile"><div class="decision-tile-lbl">Surprise</div><div class="decision-tile-val">—</div><div class="decision-tile-note">vs market</div></div>
-            </div>
-            <div class="surprise-strip" id="surprise-strip">On decision months, market reaction is driven by the gap between your decision and the market-implied move.</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="chart-tabs" id="chart-tabs">
-        <button class="chart-tab active" id="tab-macro" onclick="setChartDeck('macro')">Macro</button>
-        <button class="chart-tab" id="tab-market" onclick="setChartDeck('market')">Market pricing</button>
-        <button class="chart-tab" id="tab-player" onclick="setChartDeck('player')">Player history</button>
-        <button class="chart-tab" id="tab-audit" onclick="setChartDeck('audit')">Source audit</button>
-      </div>
-
-      <div class="chart-deck" id="chart-deck-market">
-        <div class="chart-block">
-          <div class="chart-block-header"><span class="chart-title">RATE PATH: REAL FED vs YOU vs MARKET</span><span class="chart-subtitle">Market points only where real pricing exists</span></div>
-          <div class="chart-wrap"><canvas id="chart-rate-path"></canvas></div>
-        </div>
-        <div class="chart-block">
-          <div class="chart-block-header"><span class="chart-title">FOMC SURPRISE LEDGER</span><span class="chart-subtitle">Your decision and real Fed vs market-implied move</span></div>
-          <div class="chart-wrap"><canvas id="chart-surprise"></canvas></div>
-        </div>
-      </div>
-
-      <div class="chart-deck" id="chart-deck-player">
-        <div class="chart-block">
-          <div class="chart-block-header"><span class="chart-title">CREDIBILITY / APPROVAL PATH</span><span class="chart-subtitle">Gameplay score, not official data</span></div>
-          <div class="chart-wrap"><canvas id="chart-credibility"></canvas></div>
-        </div>
-        <div class="chart-block">
-          <div class="chart-block-header"><span class="chart-title">DECISION HISTORY TABLE</span><span class="chart-subtitle">Player vs market vs historical Fed</span></div>
-          <div class="decision-ledger" id="decision-ledger"><div style="padding:10px;color:var(--text3);font-size:12px;">No FOMC decisions yet.</div></div>
-        </div>
-      </div>
-
-      <div class="chart-deck" id="chart-deck-audit">
-        <div class="audit-grid">
-          <div class="audit-card"><div class="audit-title"><span class="source-pill source-real">Real data</span> Macro</div><div class="audit-body">CPI, unemployment, GDP/activity, Fed funds, and Treasury series come from the bundled official macro dataset built from FRED sources.</div></div>
-          <div class="audit-card"><div class="audit-title"><span class="source-pill source-mkt">Real market</span> Pricing</div><div class="audit-body">Pre-FOMC market-implied moves use the included real sourced market-pricing CSV. Missing rows stay unavailable instead of being invented.</div></div>
-          <div class="audit-card"><div class="audit-title"><span class="source-pill source-sim">Simulation</span> Player path</div><div class="audit-body">Your alternate inflation, unemployment, growth, approval, and credibility paths are model/game outputs driven by policy choices and shocks.</div></div>
-          <div class="audit-card"><div class="audit-title"><span class="source-pill source-model">Model</span> Transmission</div><div class="audit-body">Policy effects are lagged through the app's regime/IRF logic. Reactions use surprise versus market-implied pricing.</div></div>
-        </div>
-      </div>
-
-      <div class="chart-block">
-        <div class="chart-block-header">
-          <span class="chart-title">INFLATION (CPI YOY %)</span>
-          <span class="chart-subtitle">Real vs Player · 2% target</span>
-        </div>
-        <div class="chart-wrap"><canvas id="chart-inflation"></canvas></div>
-      </div>
-
-      <div class="chart-block">
-        <div class="chart-block-header">
-          <span class="chart-title">UNEMPLOYMENT RATE (%)</span>
-          <span class="chart-subtitle">Real vs Player · NAIRU ~5%</span>
-        </div>
-        <div class="chart-wrap"><canvas id="chart-unemployment"></canvas></div>
-      </div>
-
-      <div class="chart-block">
-        <div class="chart-block-header">
-          <span class="chart-title">GROWTH — IP-BASED PROXY (YOY %)</span>
-          <span class="chart-subtitle">Industrial production, not GDP</span>
-        </div>
-        <div class="chart-wrap"><canvas id="chart-growth"></canvas></div>
-      </div>
-
-      <div class="chart-block">
-        <div class="chart-block-header">
-          <span class="chart-title">FED FUNDS RATE (%)</span>
-          <span class="chart-subtitle">Real decision vs Player path</span>
-        </div>
-        <div class="chart-wrap"><canvas id="chart-rate"></canvas></div>
-      </div>
-
-      <div class="chart-block">
-        <div class="chart-block-header">
-          <span class="chart-title">YIELD CURVE SPREAD (10Y−2Y %)</span>
-          <span class="chart-subtitle">Negative = inverted (recession signal)</span>
-        </div>
-        <div class="chart-wrap"><canvas id="chart-spread"></canvas></div>
-      </div>
-
-      <!-- Inline character reaction — appears below charts -->
-      <div id="char-popup" class="char-popup" onclick="dismissPopup()">
-        <div class="char-avatar" id="char-avatar">🧑</div>
-        <div class="char-body">
-          <div class="char-name" id="char-name">—</div>
-          <div class="char-mood" id="char-mood">—</div>
-          <div class="char-quote" id="char-quote">—</div>
-          <div class="char-dismiss">click to dismiss</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- RIGHT: sidebar -->
-    <div class="right-panel">
-
-      <div class="section-label">FOMC Advisors</div>
-      <div class="advisor-grid" id="advisor-grid">
-        <div class="advisor-card"><div class="advisor-name">Hawk</div><div class="advisor-quote">Waiting for data...</div></div>
-      </div>
-
-      <div class="section-label">Real Market Pricing Before FOMC</div>
-      <div class="info-box" id="market-pricing-box">
-        <div class="pricing-grid">
-          <div class="pricing-cell"><div class="pricing-lbl">Implied move</div><div class="pricing-val" id="pricing-implied">—</div></div>
-          <div class="pricing-cell"><div class="pricing-lbl">Contract</div><div class="pricing-val" id="pricing-contract">—</div></div>
-          <div class="pricing-cell"><div class="pricing-lbl">As of</div><div class="pricing-val" id="pricing-asof">—</div></div>
-          <div class="pricing-cell"><div class="pricing-lbl">Price</div><div class="pricing-val" id="pricing-price">—</div></div>
-        </div>
-        <div id="pricing-outcomes"></div>
-        <div class="pricing-note" id="pricing-note">Real ZQ futures pricing loads on FOMC months. No fake fallback is used.</div>
-      </div>
-
-      <div class="section-label">Market Reaction</div>
-      <div class="info-box" id="market-reaction-box">
-        <div class="reaction-grid">
-          <div class="reaction-cell"><div class="reaction-lbl">Stocks</div><div class="reaction-val" id="react-stocks">—</div></div>
-          <div class="reaction-cell"><div class="reaction-lbl">2Y Yield</div><div class="reaction-val" id="react-y2">—</div></div>
-          <div class="reaction-cell"><div class="reaction-lbl">Dollar</div><div class="reaction-val" id="react-dollar">—</div></div>
-          <div class="reaction-cell"><div class="reaction-lbl">Credit</div><div class="reaction-val" id="react-credit">—</div></div>
-        </div>
-        <div class="reaction-note" id="react-note">Make a FOMC decision to see how markets price your credibility.</div>
-      </div>
-
-      <div class="section-label">Active Policy Pipeline</div>
-      <div class="info-box" id="pipeline-box" style="font-size:13px;line-height:1.9;">
-        <span style="color:var(--text3)">No active rate shocks in pipeline.</span>
-      </div>
-
-      <div class="section-label">Taylor Rule</div>
-      <div class="info-box" id="taylor-box">—</div>
-
-      <div class="section-label">12-Month Projection</div>
-      <div id="fwd-projection" class="info-box">
-        <div class="proj-item">Advance month to see projections.</div>
-      </div>
-
-      <div class="section-label">Divergence from Reality</div>
-      <div class="div-track info-box">
-        <div class="div-row"><span>Inflation</span><span class="div-val" id="div-inf">—</span></div>
-        <div class="div-row"><span>Unemployment</span><span class="div-val" id="div-unemp">—</span></div>
-        <div class="div-row"><span>Growth</span><span class="div-val" id="div-growth">—</span></div>
-        <div class="div-row" style="margin-top:4px;border-top:1px solid var(--border);padding-top:4px;">
-          <span style="color:var(--text2);">Cumulative</span><span class="div-val" id="div-total">—</span>
-        </div>
-      </div>
-
-      <div class="section-label">Approval Ratings — You vs Real Fed</div>
-      <div id="dual-approvals">
-        <!-- Markets -->
-        <div class="dual-ap-row">
-          <span class="dual-ap-label">Markets</span>
-          <div class="dual-bars">
-            <div class="dual-bar-line"><span class="dual-bar-lbl sc-you">YOU</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-markets" style="width:50%;background:var(--player)"></div></div><span class="dual-bar-num sc-you" id="ap-markets-n">50</span></div>
-            <div class="dual-bar-line"><span class="dual-bar-lbl sc-fed">FED</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-fed-markets" style="width:50%;background:var(--real)"></div></div><span class="dual-bar-num sc-fed" id="ap-fed-markets-n">50</span></div>
-          </div>
-        </div>
-        <!-- Congress -->
-        <div class="dual-ap-row">
-          <span class="dual-ap-label">Congress</span>
-          <div class="dual-bars">
-            <div class="dual-bar-line"><span class="dual-bar-lbl sc-you">YOU</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-congress" style="width:50%;background:var(--player)"></div></div><span class="dual-bar-num sc-you" id="ap-congress-n">50</span></div>
-            <div class="dual-bar-line"><span class="dual-bar-lbl sc-fed">FED</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-fed-congress" style="width:50%;background:var(--real)"></div></div><span class="dual-bar-num sc-fed" id="ap-fed-congress-n">50</span></div>
-          </div>
-        </div>
-        <!-- Public -->
-        <div class="dual-ap-row">
-          <span class="dual-ap-label">Public</span>
-          <div class="dual-bars">
-            <div class="dual-bar-line"><span class="dual-bar-lbl sc-you">YOU</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-public" style="width:50%;background:var(--player)"></div></div><span class="dual-bar-num sc-you" id="ap-public-n">50</span></div>
-            <div class="dual-bar-line"><span class="dual-bar-lbl sc-fed">FED</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-fed-public" style="width:50%;background:var(--real)"></div></div><span class="dual-bar-num sc-fed" id="ap-fed-public-n">50</span></div>
-          </div>
-        </div>
-        <!-- Economists -->
-        <div class="dual-ap-row">
-          <span class="dual-ap-label">Economists</span>
-          <div class="dual-bars">
-            <div class="dual-bar-line"><span class="dual-bar-lbl sc-you">YOU</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-econ" style="width:50%;background:var(--player)"></div></div><span class="dual-bar-num sc-you" id="ap-econ-n">50</span></div>
-            <div class="dual-bar-line"><span class="dual-bar-lbl sc-fed">FED</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-fed-econ" style="width:50%;background:var(--real)"></div></div><span class="dual-bar-num sc-fed" id="ap-fed-econ-n">50</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="section-label">Scorecard vs Real Fed</div>
-      <div class="info-box" id="scorecard-box">
-        <table class="scorecard">
-          <thead><tr><th>METRIC</th><th class="sc-you">YOU</th><th class="sc-fed">FED</th><th>EDGE</th></tr></thead>
-          <tbody id="scorecard-body">
-            <tr><td colspan="4" style="color:var(--text3)">Advance to see scorecard.</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="section-label">Achievements</div>
-      <div class="info-box"><div class="achievement-list" id="achievement-list"><span class="achievement-empty">No achievements yet.</span></div></div>
-
-      <div class="section-label">Event Log</div>
-      <div id="event-feed">
-        <div class="event-item info">
-          <div class="event-title">YOUR TERM BEGINS</div>
-          <div class="event-body">Inherit the economy. Decisions at FOMC meeting months only.</div>
-        </div>
-      </div>
-    </div>
-  </div>
+<div class="screen" id="game-screen">
+<div class="top-bar">
+<span class="tl" id="top-title">FED CHAIR</span>
+<span class="dim">|</span>
+<span class="val" id="top-date">—</span>
+<span class="dim">|</span>
+<span class="dim">MTH</span><span class="val" id="top-progress">1/?</span>
+<span class="dim">|</span>
+<span class="meeting-badge" id="meeting-badge">⬤ FOMC MEETING</span>
+<span class="dim">|</span>
+<span class="regime-badge" id="regime-badge">REGIME</span>
+<span class="dim">|</span>
+<div class="approval-bar">
+<span class="dim">APPROVAL</span>
+<div class="bar-bg"><div class="bar-fill" id="main-bar" style="width:50%"></div></div>
+<span class="val" id="approval-num">50%</span>
 </div>
-
+<span class="dim">|</span>
+<span class="divergence-badge" id="divergence-badge">DIV 0.0</span>
+<span class="dim">|</span>
+<span class="dim">SCORE</span><span class="val" id="score-display">0</span>
+<span class="dim">|</span>
+<span class="credibility-pill" id="credibility-pill">CRED 70</span>
+</div>
+<div class="game-body">
+<!-- LEFT: controls + metrics -->
+<div class="left-panel">
+<div>
+<div class="section-label">Economic Dashboard</div>
+<div class="track-legend" style="margin-bottom:6px;">
+<span class="tleg-r">── REAL</span>
+<span class="tleg-p">── PLAYER</span>
+</div>
+<div class="mission-box" id="mission-box" style="margin-bottom:8px;">
+<div class="mission-title" id="mission-title">MISSION OBJECTIVE</div>
+<div class="mission-body" id="mission-body">Keep inflation credible without breaking employment.</div>
+<div class="mission-progress"><div class="mission-fill" id="mission-fill"></div></div>
+</div>
+<div class="metrics-grid">
+<div class="metric">
+<div class="metric-label">INFLATION (CPI YOY)</div>
+<div class="metric-dual">
+<div class="metric-real" id="m-inf-r">--</div>
+<div class="metric-divider">/</div>
+<div class="metric-player" id="m-inf-p">--</div>
+</div>
+<div class="metric-chg" id="m-inf-chg"></div>
+</div>
+<div class="metric">
+<div class="metric-label">UNEMPLOYMENT</div>
+<div class="metric-dual">
+<div class="metric-real" id="m-unemp-r">--</div>
+<div class="metric-divider">/</div>
+<div class="metric-player" id="m-unemp-p">--</div>
+</div>
+<div class="metric-chg" id="m-unemp-chg"></div>
+</div>
+<div class="metric">
+<div class="metric-label">GROWTH (IP PROXY)</div>
+<div class="metric-dual">
+<div class="metric-real" id="m-growth-r">--</div>
+<div class="metric-divider">/</div>
+<div class="metric-player" id="m-growth-p">--</div>
+</div>
+<div class="metric-chg" id="m-growth-chg"></div>
+</div>
+<div class="metric">
+<div class="metric-label">FED FUNDS RATE</div>
+<div class="metric-dual">
+<div class="metric-real" id="m-rate-r">--</div>
+<div class="metric-divider">/</div>
+<div class="metric-player" id="m-rate-p">--</div>
+</div>
+<div class="metric-chg" id="m-rate-chg"></div>
+</div>
+<div class="metric">
+<div class="metric-label">YIELD SPREAD (10Y-2Y)</div>
+<div class="metric-dual">
+<div class="metric-real" id="m-yc-r">--</div>
+<div class="metric-divider">/</div>
+<div class="metric-player" id="m-yc-p">--</div>
+</div>
+<div class="metric-chg" id="m-yc-chg"></div>
+</div>
+<div class="metric">
+<div class="metric-label">EXPECTATIONS INDEX</div>
+<div class="metric-dual">
+<div class="metric-real" id="m-exp">--</div>
+</div>
+<div class="metric-chg" id="m-exp-chg" style="color:var(--text3)">fwd guidance</div>
+</div>
+</div>
+</div>
+<div class="section-label" style="margin-bottom:0;">Policy Controls</div>
+<div class="controls-box">
+<div class="meeting-only-msg" id="meeting-only-msg">NO FOMC MEETING — ADVANCING WITHOUT RATE DECISION</div>
+<div class="rate-display" id="rate-display">0.00%</div>
+<div class="rate-preview" id="rate-preview"></div>
+<div class="sub-label">FEDERAL FUNDS RATE ADJUSTMENT</div>
+<div class="rate-controls">
+<button class="rate-btn" data-delta="-1" onclick="changeRate(-1,this)">−100bps</button>
+<button class="rate-btn" data-delta="-0.5" onclick="changeRate(-0.5,this)">−50bps</button>
+<button class="rate-btn" data-delta="-0.25" onclick="changeRate(-0.25,this)">−25bps</button>
+<button class="rate-btn selected-rate" data-delta="0" onclick="changeRate(0,this)">HOLD</button>
+<button class="rate-btn" data-delta="0.25" onclick="changeRate(0.25,this)">+25bps</button>
+<button class="rate-btn" data-delta="0.5" onclick="changeRate(0.5,this)">+50bps</button>
+<button class="rate-btn" data-delta="1" onclick="changeRate(1,this)">+100bps</button>
+</div>
+<hr class="div-line"/>
+<div class="sub-label">BALANCE SHEET POLICY</div>
+<div class="qe-controls">
+<div class="qe-btn" id="qe-btn" onclick="setBS('qe')">QE · BUY</div>
+<div class="qe-btn active-neutral" id="neutral-btn" onclick="setBS('neutral')">NEUTRAL</div>
+<div class="qe-btn" id="qt-btn" onclick="setBS('qt')">QT · SELL</div>
+</div>
+<div class="sub-label">FORWARD GUIDANCE TONE</div>
+<div class="tone-row">
+<div class="tone-btn" id="tone-dovish" onclick="setTone('dovish')">DOVISH</div>
+<div class="tone-btn active-tone" id="tone-neutral" onclick="setTone('neutral')">NEUTRAL</div>
+<div class="tone-btn" id="tone-hawkish" onclick="setTone('hawkish')">HAWKISH</div>
+</div>
+<div class="effect-preview" id="effect-preview">Select a rate move to see projected effects.</div>
+<button class="next-btn" id="next-btn" onclick="nextMonth()">ADVANCE MONTH →</button>
+</div>
+</div>
+<!-- CENTER: stacked charts -->
+<div class="center-panel deck-macro" id="center-panel">
+<div class="crisis-bar">
+<div class="recession-banner" id="recession-banner">⚠ RECESSION — 2 CONSECUTIVE MONTHS NEGATIVE GROWTH</div>
+<div class="inflation-crisis-banner" id="inflation-crisis-banner">⚠ INFLATION CRISIS — CREDIBILITY AT RISK</div>
+</div>
+<div class="cockpit-hero" id="cockpit-hero">
+<div class="cockpit-hero-head">
+<div>
+<div class="cockpit-kicker" id="cockpit-kicker">FOMC DECISION COCKPIT</div>
+<div class="cockpit-title" id="cockpit-headline">Read the economy, then surprise the market carefully.</div>
+<div class="cockpit-sub" id="cockpit-subtitle">Real data feeds the macro board. Your decisions create a simulated alternate path.</div>
+</div>
+<div class="cockpit-badges">
+<span class="source-pill source-real">Real macro</span>
+<span class="source-pill source-mkt">Real market pricing</span>
+<span class="source-pill source-sim">Simulated player path</span>
+</div>
+</div>
+<div class="cockpit-grid">
+<div class="cockpit-card">
+<div class="cockpit-card-title">Market priced before decision</div>
+<div class="cockpit-chart"><canvas id="chart-market-dist"></canvas></div>
+<div class="chart-mini-note" id="market-dist-note">Real sourced probability buckets appear on FOMC months.</div>
+</div>
+<div class="cockpit-card">
+<div class="cockpit-card-title">Decision readout</div>
+<div class="decision-snapshot" id="decision-snapshot">
+<div class="decision-tile"><div class="decision-tile-lbl">Market</div><div class="decision-tile-val">—</div><div class="decision-tile-note">waiting</div></div>
+<div class="decision-tile"><div class="decision-tile-lbl">You</div><div class="decision-tile-val">HOLD</div><div class="decision-tile-note">pending</div></div>
+<div class="decision-tile"><div class="decision-tile-lbl">Real Fed</div><div class="decision-tile-val">—</div><div class="decision-tile-note">historical move</div></div>
+<div class="decision-tile"><div class="decision-tile-lbl">Surprise</div><div class="decision-tile-val">—</div><div class="decision-tile-note">vs market</div></div>
+</div>
+<div class="surprise-strip" id="surprise-strip">On decision months, market reaction is driven by the gap between your decision and the market-implied move.</div>
+</div>
+</div>
+</div>
+<div class="chart-tabs" id="chart-tabs">
+<button class="chart-tab active" id="tab-macro" onclick="setChartDeck('macro')">Macro</button>
+<button class="chart-tab" id="tab-market" onclick="setChartDeck('market')">Market pricing</button>
+<button class="chart-tab" id="tab-player" onclick="setChartDeck('player')">Player history</button>
+<button class="chart-tab" id="tab-audit" onclick="setChartDeck('audit')">Source audit</button>
+</div>
+<div class="chart-deck" id="chart-deck-market">
+<div class="chart-block">
+<div class="chart-block-header"><span class="chart-title">RATE PATH: REAL FED vs YOU vs MARKET</span><span class="chart-subtitle">Market points only where real pricing exists</span></div>
+<div class="chart-wrap"><canvas id="chart-rate-path"></canvas></div>
+</div>
+<div class="chart-block">
+<div class="chart-block-header"><span class="chart-title">FOMC SURPRISE LEDGER</span><span class="chart-subtitle">Your decision and real Fed vs market-implied move</span></div>
+<div class="chart-wrap"><canvas id="chart-surprise"></canvas></div>
+</div>
+</div>
+<div class="chart-deck" id="chart-deck-player">
+<div class="chart-block">
+<div class="chart-block-header"><span class="chart-title">CREDIBILITY / APPROVAL PATH</span><span class="chart-subtitle">Gameplay score, not official data</span></div>
+<div class="chart-wrap"><canvas id="chart-credibility"></canvas></div>
+</div>
+<div class="chart-block">
+<div class="chart-block-header"><span class="chart-title">DECISION HISTORY TABLE</span><span class="chart-subtitle">Player vs market vs historical Fed</span></div>
+<div class="decision-ledger" id="decision-ledger"><div style="padding:10px;color:var(--text3);font-size:12px;">No FOMC decisions yet.</div></div>
+</div>
+</div>
+<div class="chart-deck" id="chart-deck-audit">
+<div class="audit-grid">
+<div class="audit-card"><div class="audit-title"><span class="source-pill source-real">Real data</span> Macro</div><div class="audit-body">CPI, unemployment, GDP/activity, Fed funds, and Treasury series come from the bundled official macro dataset built from FRED sources.</div></div>
+<div class="audit-card"><div class="audit-title"><span class="source-pill source-mkt">Real market</span> Pricing</div><div class="audit-body">Pre-FOMC market-implied moves use the included real sourced market-pricing CSV. Missing rows stay unavailable instead of being invented.</div></div>
+<div class="audit-card"><div class="audit-title"><span class="source-pill source-sim">Simulation</span> Player path</div><div class="audit-body">Your alternate inflation, unemployment, growth, approval, and credibility paths are model/game outputs driven by policy choices and shocks.</div></div>
+<div class="audit-card"><div class="audit-title"><span class="source-pill source-model">Model</span> Transmission</div><div class="audit-body">Policy effects are lagged through the app's regime/IRF logic. Reactions use surprise versus market-implied pricing.</div></div>
+</div>
+</div>
+<div class="chart-block">
+<div class="chart-block-header">
+<span class="chart-title">INFLATION (CPI YOY %)</span>
+<span class="chart-subtitle">Real vs Player · 2% target</span>
+</div>
+<div class="chart-wrap"><canvas id="chart-inflation"></canvas></div>
+</div>
+<div class="chart-block">
+<div class="chart-block-header">
+<span class="chart-title">UNEMPLOYMENT RATE (%)</span>
+<span class="chart-subtitle">Real vs Player · NAIRU ~5%</span>
+</div>
+<div class="chart-wrap"><canvas id="chart-unemployment"></canvas></div>
+</div>
+<div class="chart-block">
+<div class="chart-block-header">
+<span class="chart-title">GROWTH — IP-BASED PROXY (YOY %)</span>
+<span class="chart-subtitle">Industrial production, not GDP</span>
+</div>
+<div class="chart-wrap"><canvas id="chart-growth"></canvas></div>
+</div>
+<div class="chart-block">
+<div class="chart-block-header">
+<span class="chart-title">FED FUNDS RATE (%)</span>
+<span class="chart-subtitle">Real decision vs Player path</span>
+</div>
+<div class="chart-wrap"><canvas id="chart-rate"></canvas></div>
+</div>
+<div class="chart-block">
+<div class="chart-block-header">
+<span class="chart-title">YIELD CURVE SPREAD (10Y−2Y %)</span>
+<span class="chart-subtitle">Negative = inverted (recession signal)</span>
+</div>
+<div class="chart-wrap"><canvas id="chart-spread"></canvas></div>
+</div>
+<!-- Inline character reaction — appears below charts -->
+<div class="char-popup" id="char-popup" onclick="dismissPopup()">
+<div class="char-avatar" id="char-avatar">🧑</div>
+<div class="char-body">
+<div class="char-name" id="char-name">—</div>
+<div class="char-mood" id="char-mood">—</div>
+<div class="char-quote" id="char-quote">—</div>
+<div class="char-dismiss">click to dismiss</div>
+</div>
+</div>
+</div>
+<!-- RIGHT: sidebar -->
+<div class="right-panel"><div class="side-card side-card-fomc-advisors"><div class="section-label">FOMC Advisors</div>
+<div class="advisor-grid" id="advisor-grid">
+<div class="advisor-card"><div class="advisor-name">Hawk</div><div class="advisor-quote">Waiting for data...</div></div>
+</div>
+</div>
+<div class="side-card side-card-real-market-pricing-before-fomc"><div class="section-label">Real Market Pricing Before FOMC</div>
+<div class="info-box" id="market-pricing-box">
+<div class="pricing-grid">
+<div class="pricing-cell"><div class="pricing-lbl">Implied move</div><div class="pricing-val" id="pricing-implied">—</div></div>
+<div class="pricing-cell"><div class="pricing-lbl">Contract</div><div class="pricing-val" id="pricing-contract">—</div></div>
+<div class="pricing-cell"><div class="pricing-lbl">As of</div><div class="pricing-val" id="pricing-asof">—</div></div>
+<div class="pricing-cell"><div class="pricing-lbl">Price</div><div class="pricing-val" id="pricing-price">—</div></div>
+</div>
+<div id="pricing-outcomes"></div>
+<div class="pricing-note" id="pricing-note">Real ZQ futures pricing loads on FOMC months. No fake fallback is used.</div>
+</div>
+</div>
+<div class="side-card side-card-market-reaction"><div class="section-label">Market Reaction</div>
+<div class="info-box" id="market-reaction-box">
+<div class="reaction-grid">
+<div class="reaction-cell"><div class="reaction-lbl">Stocks</div><div class="reaction-val" id="react-stocks">—</div></div>
+<div class="reaction-cell"><div class="reaction-lbl">2Y Yield</div><div class="reaction-val" id="react-y2">—</div></div>
+<div class="reaction-cell"><div class="reaction-lbl">Dollar</div><div class="reaction-val" id="react-dollar">—</div></div>
+<div class="reaction-cell"><div class="reaction-lbl">Credit</div><div class="reaction-val" id="react-credit">—</div></div>
+</div>
+<div class="reaction-note" id="react-note">Make a FOMC decision to see how markets price your credibility.</div>
+</div>
+</div>
+<div class="side-card side-card-active-policy-pipeline"><div class="section-label">Active Policy Pipeline</div>
+<div class="info-box" id="pipeline-box" style="font-size:13px;line-height:1.9;">
+<span style="color:var(--text3)">No active rate shocks in pipeline.</span>
+</div>
+</div>
+<div class="side-card side-card-taylor-rule"><div class="section-label">Taylor Rule</div>
+<div class="info-box" id="taylor-box">—</div>
+</div>
+<div class="side-card side-card-12-month-projection"><div class="section-label">12-Month Projection</div>
+<div class="info-box" id="fwd-projection">
+<div class="proj-item">Advance month to see projections.</div>
+</div>
+</div>
+<div class="side-card side-card-divergence-from-reality"><div class="section-label">Divergence from Reality</div>
+<div class="div-track info-box">
+<div class="div-row"><span>Inflation</span><span class="div-val" id="div-inf">—</span></div>
+<div class="div-row"><span>Unemployment</span><span class="div-val" id="div-unemp">—</span></div>
+<div class="div-row"><span>Growth</span><span class="div-val" id="div-growth">—</span></div>
+<div class="div-row" style="margin-top:4px;border-top:1px solid var(--border);padding-top:4px;">
+<span style="color:var(--text2);">Cumulative</span><span class="div-val" id="div-total">—</span>
+</div>
+</div>
+</div>
+<div class="side-card side-card-approval-ratings-you-vs-real-fed"><div class="section-label">Approval Ratings — You vs Real Fed</div>
+<div id="dual-approvals">
+<!-- Markets -->
+<div class="dual-ap-row">
+<span class="dual-ap-label">Markets</span>
+<div class="dual-bars">
+<div class="dual-bar-line"><span class="dual-bar-lbl sc-you">YOU</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-markets" style="width:50%;background:var(--player)"></div></div><span class="dual-bar-num sc-you" id="ap-markets-n">50</span></div>
+<div class="dual-bar-line"><span class="dual-bar-lbl sc-fed">FED</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-fed-markets" style="width:50%;background:var(--real)"></div></div><span class="dual-bar-num sc-fed" id="ap-fed-markets-n">50</span></div>
+</div>
+</div>
+<!-- Congress -->
+<div class="dual-ap-row">
+<span class="dual-ap-label">Congress</span>
+<div class="dual-bars">
+<div class="dual-bar-line"><span class="dual-bar-lbl sc-you">YOU</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-congress" style="width:50%;background:var(--player)"></div></div><span class="dual-bar-num sc-you" id="ap-congress-n">50</span></div>
+<div class="dual-bar-line"><span class="dual-bar-lbl sc-fed">FED</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-fed-congress" style="width:50%;background:var(--real)"></div></div><span class="dual-bar-num sc-fed" id="ap-fed-congress-n">50</span></div>
+</div>
+</div>
+<!-- Public -->
+<div class="dual-ap-row">
+<span class="dual-ap-label">Public</span>
+<div class="dual-bars">
+<div class="dual-bar-line"><span class="dual-bar-lbl sc-you">YOU</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-public" style="width:50%;background:var(--player)"></div></div><span class="dual-bar-num sc-you" id="ap-public-n">50</span></div>
+<div class="dual-bar-line"><span class="dual-bar-lbl sc-fed">FED</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-fed-public" style="width:50%;background:var(--real)"></div></div><span class="dual-bar-num sc-fed" id="ap-fed-public-n">50</span></div>
+</div>
+</div>
+<!-- Economists -->
+<div class="dual-ap-row">
+<span class="dual-ap-label">Economists</span>
+<div class="dual-bars">
+<div class="dual-bar-line"><span class="dual-bar-lbl sc-you">YOU</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-econ" style="width:50%;background:var(--player)"></div></div><span class="dual-bar-num sc-you" id="ap-econ-n">50</span></div>
+<div class="dual-bar-line"><span class="dual-bar-lbl sc-fed">FED</span><div class="dual-bar-bg"><div class="dual-bar-fill" id="ap-fed-econ" style="width:50%;background:var(--real)"></div></div><span class="dual-bar-num sc-fed" id="ap-fed-econ-n">50</span></div>
+</div>
+</div>
+</div>
+</div>
+<div class="side-card side-card-scorecard-vs-real-fed"><div class="section-label">Scorecard vs Real Fed</div>
+<div class="info-box" id="scorecard-box">
+<table class="scorecard">
+<thead><tr><th>METRIC</th><th class="sc-you">YOU</th><th class="sc-fed">FED</th><th>EDGE</th></tr></thead>
+<tbody id="scorecard-body">
+<tr><td colspan="4" style="color:var(--text3)">Advance to see scorecard.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="side-card side-card-achievements"><div class="section-label">Achievements</div>
+<div class="info-box"><div class="achievement-list" id="achievement-list"><span class="achievement-empty">No achievements yet.</span></div></div>
+</div>
+<div class="side-card side-card-event-log"><div class="section-label">Event Log</div>
+<div id="event-feed">
+<div class="event-item info">
+<div class="event-title">YOUR TERM BEGINS</div>
+<div class="event-body">Inherit the economy. Decisions at FOMC meeting months only.</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
 <!-- ── END ── -->
-<div id="end-screen" class="screen">
-  <div class="section-label" style="letter-spacing:0.2em;margin-bottom:0.4rem;">TERM CONCLUDED — LEGACY GRADE</div>
-  <div class="grade-big" id="final-grade">B</div>
-  <div id="final-identity" style="font-size:1rem;letter-spacing:0.18em;margin-bottom:0.3rem;font-weight:700;"></div>
-  <div id="final-chair" style="font-size:0.57rem;color:var(--text3);letter-spacing:0.2em;margin-bottom:0.6rem;"></div>
-  <div id="final-legacy" class="legacy-text"></div>
-  <div style="font-size:0.57rem;color:var(--text3);margin-bottom:0.7rem;letter-spacing:0.1em;">PERFORMANCE BREAKDOWN vs REAL HISTORY</div>
-  <div id="fed-vs-you-compare" style="text-align:center;margin-bottom:1rem;background:var(--bg1);border:2px solid var(--border);border-radius:8px;padding:16px 20px;"></div>
-  <div class="stats-row">
-    <div class="stat-item"><div class="stat-num" id="stat-avg-inf">-</div><div class="stat-lbl">YOUR AVG INFLATION</div></div>
-    <div class="stat-item"><div class="stat-num" id="stat-real-inf">-</div><div class="stat-lbl">REAL AVG INFLATION</div></div>
-    <div class="stat-item"><div class="stat-num" id="stat-avg-unemp">-</div><div class="stat-lbl">YOUR AVG UNEMPLOYMENT</div></div>
-    <div class="stat-item"><div class="stat-num" id="stat-real-unemp">-</div><div class="stat-lbl">REAL AVG UNEMPLOYMENT</div></div>
-    <div class="stat-item"><div class="stat-num" id="stat-score">-</div><div class="stat-lbl">FINAL SCORE / MONTH</div></div>
-    <div class="stat-item"><div class="stat-num" id="stat-recessions">-</div><div class="stat-lbl">RECESSIONS</div></div>
-    <div class="stat-item"><div class="stat-num" id="stat-divergence">-</div><div class="stat-lbl">TOTAL DIVERGENCE</div></div>
-  </div>
-  <div style="display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin-bottom:1.2rem;font-size:13px;color:var(--text3);">
-    <span id="stat-hikes">-</span>
-    <span id="stat-cuts">-</span>
-    <span id="stat-holds">-</span>
-    <span id="stat-identity-detail">-</span>
-  </div>
-  <button class="replay-btn" onclick="resetGame()">NEW TERM</button>
+<div class="screen" id="end-screen">
+<div class="section-label" style="letter-spacing:0.2em;margin-bottom:0.4rem;">TERM CONCLUDED — LEGACY GRADE</div>
+<div class="grade-big" id="final-grade">B</div>
+<div id="final-identity" style="font-size:1rem;letter-spacing:0.18em;margin-bottom:0.3rem;font-weight:700;"></div>
+<div id="final-chair" style="font-size:0.57rem;color:var(--text3);letter-spacing:0.2em;margin-bottom:0.6rem;"></div>
+<div class="legacy-text" id="final-legacy"></div>
+<div style="font-size:0.57rem;color:var(--text3);margin-bottom:0.7rem;letter-spacing:0.1em;">PERFORMANCE BREAKDOWN vs REAL HISTORY</div>
+<div id="fed-vs-you-compare" style="text-align:center;margin-bottom:1rem;background:var(--bg1);border:2px solid var(--border);border-radius:8px;padding:16px 20px;"></div>
+<div class="stats-row">
+<div class="stat-item"><div class="stat-num" id="stat-avg-inf">-</div><div class="stat-lbl">YOUR AVG INFLATION</div></div>
+<div class="stat-item"><div class="stat-num" id="stat-real-inf">-</div><div class="stat-lbl">REAL AVG INFLATION</div></div>
+<div class="stat-item"><div class="stat-num" id="stat-avg-unemp">-</div><div class="stat-lbl">YOUR AVG UNEMPLOYMENT</div></div>
+<div class="stat-item"><div class="stat-num" id="stat-real-unemp">-</div><div class="stat-lbl">REAL AVG UNEMPLOYMENT</div></div>
+<div class="stat-item"><div class="stat-num" id="stat-score">-</div><div class="stat-lbl">FINAL SCORE / MONTH</div></div>
+<div class="stat-item"><div class="stat-num" id="stat-recessions">-</div><div class="stat-lbl">RECESSIONS</div></div>
+<div class="stat-item"><div class="stat-num" id="stat-divergence">-</div><div class="stat-lbl">TOTAL DIVERGENCE</div></div>
 </div>
-
+<div style="display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin-bottom:1.2rem;font-size:13px;color:var(--text3);">
+<span id="stat-hikes">-</span>
+<span id="stat-cuts">-</span>
+<span id="stat-holds">-</span>
+<span id="stat-identity-detail">-</span>
+</div>
+<button class="replay-btn" onclick="resetGame()">NEW TERM</button>
+</div>
 <!-- ── EVENT CHOICE MODAL ── -->
 <div id="event-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:300;justify-content:center;align-items:center;">
-  <div style="background:var(--bg1);border:2px solid var(--border2);border-radius:10px;padding:28px 32px;max-width:520px;width:90%;box-shadow:0 12px 48px rgba(0,0,0,0.8);">
-    <div id="em-type" style="font-size:11px;letter-spacing:0.2em;color:var(--text3);margin-bottom:6px;font-weight:700;"></div>
-    <div id="em-title" style="font-size:1.3rem;font-weight:700;margin-bottom:10px;letter-spacing:0.05em;"></div>
-    <div id="em-desc" style="font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:18px;"></div>
-    <div style="font-size:12px;color:var(--text3);letter-spacing:0.1em;margin-bottom:10px;font-weight:700;">YOUR RESPONSE:</div>
-    <div id="em-choices" style="display:flex;flex-direction:column;gap:8px;"></div>
-  </div>
+<div style="background:var(--bg1);border:2px solid var(--border2);border-radius:10px;padding:28px 32px;max-width:520px;width:90%;box-shadow:0 12px 48px rgba(0,0,0,0.8);">
+<div id="em-type" style="font-size:11px;letter-spacing:0.2em;color:var(--text3);margin-bottom:6px;font-weight:700;"></div>
+<div id="em-title" style="font-size:1.3rem;font-weight:700;margin-bottom:10px;letter-spacing:0.05em;"></div>
+<div id="em-desc" style="font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:18px;"></div>
+<div style="font-size:12px;color:var(--text3);letter-spacing:0.1em;margin-bottom:10px;font-weight:700;">YOUR RESPONSE:</div>
+<div id="em-choices" style="display:flex;flex-direction:column;gap:8px;"></div>
 </div>
-
-
-
+</div>
 <div style="position:fixed;bottom:10px;left:14px;font-family:'Courier New',monospace;font-size:11px;color:#404038;letter-spacing:0.1em;z-index:50;pointer-events:none;">MADE BY ABHISHEK CHANDAN</div>
-
 <script>
 // ── CONSTANTS ──────────────────────────────────────────────────────────────────
 const ERA_META = {

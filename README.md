@@ -61,7 +61,21 @@ Double-click:
 RUN_FED_GAME.bat
 ```
 
-That creates a virtual environment, installs requirements, and starts the app locally.
+or:
+
+```text
+RUN_LOCAL_WINDOWS_PY311.bat
+```
+
+The launcher intentionally uses Python 3.11. This matters because Python 3.14 can force pandas/statsmodels to build from source on Windows, which fails if Visual Studio build tools are missing.
+
+If you see a pandas Meson or Visual Studio error, install Python 3.11.11, then run the launcher again:
+
+```text
+https://www.python.org/downloads/release/python-31111/
+```
+
+The launcher also rebuilds an old `.venv` if it was accidentally created with Python 3.14.
 
 ## Real data vs simulation
 
@@ -101,3 +115,12 @@ This is a real sourced reconstruction, not a licensed CME FedWatch archive. If a
 - Removed extra `.md` files.
 - Made Render commands use `python -m pip` and `python -m gunicorn` to avoid environment/path mismatches.
 - Kept the creative cockpit UI, chart tabs, real market-pricing CSV, and source audit panel.
+
+
+## Compact 4-column cockpit layout
+
+- Code-level UI patch, not an image mockup.
+- Wide desktop screens now use controls + compact chart studio + two intelligence columns.
+- Macro charts are reduced and placed in a two-column chart grid.
+- Right-side panels are wrapped into compact cards to reduce scrolling.
+- Render start command remains: `python -m gunicorn main:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1`.
