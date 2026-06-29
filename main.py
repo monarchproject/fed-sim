@@ -3,9 +3,9 @@ FED CHAIR SIMULATOR — Backend
 main.py (renamed from app.py for Vercel deployment)
 """
 
-from flask import Flask, jsonify, send_from_directory, request
+from flask import Flask, jsonify, send_from_directory, request, Response
 from flask_cors import CORS
-import requests, json, os, math, tempfile
+import requests, json, os, math, tempfile, calendar, csv
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -25,6 +25,18 @@ _BUNDLED_IRF   = ROOT / "irf_v3.json"
 # Runtime-generated cache (written after a live /api/refresh)
 CACHE_FILE = DATA_DIR / "macro_dataset_v3.json"
 IRF_FILE   = DATA_DIR / "irf_v3.json"
+
+
+# Real market pricing cache. This file is written at runtime after the backend
+# pulls historical ZQ futures closes / EFFR data from public data endpoints.
+MARKET_PRICING_CACHE = DATA_DIR / "market_pricing_real_cache.json"
+
+# Optional user-provided real data file. If present, it takes priority over live
+# fetching. This is the recommended path for licensed CME/Barchart/Bloomberg data.
+# Schema:
+# era,ym,meeting_date,asof_date,source,contract,price,implied_rate,pre_meeting_rate,
+# market_implied_bps,prob_cut_50,prob_cut_25,prob_hold,prob_hike_25,prob_hike_50,prob_hike_75
+USER_MARKET_PRICING_FILE = ROOT / "fed_funds_futures_pricing.csv"
 
 
 def _clean_for_json(obj):
@@ -472,6 +484,364 @@ FOMC_DATES_BY_ERA = {
     },
 }
 
+
+# Exact decision dates for periods where public/free ZQ futures history is most
+# likely to be retrievable. Older eras remain "unavailable" unless the user adds
+# a licensed fed_funds_futures_pricing.csv file.
+FOMC_EXACT_DATES = {
+    # Late Bernanke / GFC period
+    "2008-01": "2008-01-30", "2008-03": "2008-03-18", "2008-04": "2008-04-30",
+    "2008-06": "2008-06-25", "2008-08": "2008-08-05", "2008-09": "2008-09-16",
+    "2008-10": "2008-10-29", "2008-12": "2008-12-16",
+    "2009-01": "2009-01-28", "2009-03": "2009-03-18", "2009-04": "2009-04-29",
+    "2009-06": "2009-06-24", "2009-08": "2009-08-12", "2009-09": "2009-09-23",
+    "2009-11": "2009-11-04", "2010-01": "2010-01-27", "2010-03": "2010-03-16",
+    "2010-04": "2010-04-28", "2010-06": "2010-06-23", "2010-08": "2010-08-10",
+    "2010-09": "2010-09-21", "2010-11": "2010-11-03", "2011-01": "2011-01-26",
+    "2011-03": "2011-03-15", "2011-04": "2011-04-27", "2011-06": "2011-06-22",
+    "2011-08": "2011-08-09", "2011-09": "2011-09-21", "2011-11": "2011-11-02",
+    "2011-12": "2011-12-13", "2012-01": "2012-01-25", "2012-03": "2012-03-13",
+    "2012-04": "2012-04-25", "2012-06": "2012-06-20", "2012-08": "2012-08-01",
+    "2012-09": "2012-09-13", "2012-10": "2012-10-24", "2012-12": "2012-12-12",
+    "2013-01": "2013-01-30", "2013-03": "2013-03-20", "2013-05": "2013-05-01",
+    "2013-06": "2013-06-19", "2013-07": "2013-07-31", "2013-09": "2013-09-18",
+    "2013-10": "2013-10-30", "2013-12": "2013-12-18", "2014-01": "2014-01-29",
+    "2014-03": "2014-03-19",
+
+    # Powell era
+    "2020-01": "2020-01-29", "2020-03": "2020-03-15", "2020-04": "2020-04-29",
+    "2020-06": "2020-06-10", "2020-07": "2020-07-29", "2020-09": "2020-09-16",
+    "2020-11": "2020-11-05", "2020-12": "2020-12-16", "2021-01": "2021-01-27",
+    "2021-03": "2021-03-17", "2021-04": "2021-04-28", "2021-06": "2021-06-16",
+    "2021-07": "2021-07-28", "2021-09": "2021-09-22", "2021-11": "2021-11-03",
+    "2021-12": "2021-12-15", "2022-01": "2022-01-26", "2022-03": "2022-03-16",
+    "2022-05": "2022-05-04", "2022-06": "2022-06-15", "2022-07": "2022-07-27",
+    "2022-09": "2022-09-21", "2022-11": "2022-11-02", "2022-12": "2022-12-14",
+    "2023-02": "2023-02-01", "2023-03": "2023-03-22", "2023-05": "2023-05-03",
+    "2023-06": "2023-06-14", "2023-07": "2023-07-26", "2023-09": "2023-09-20",
+    "2023-11": "2023-11-01", "2023-12": "2023-12-13", "2024-01": "2024-01-31",
+    "2024-03": "2024-03-20", "2024-05": "2024-05-01", "2024-06": "2024-06-12",
+    "2024-07": "2024-07-31", "2024-09": "2024-09-18", "2024-11": "2024-11-07",
+    "2024-12": "2024-12-18", "2025-01": "2025-01-29", "2025-03": "2025-03-19",
+    "2025-05": "2025-05-07", "2025-06": "2025-06-18", "2025-07": "2025-07-30",
+    "2025-09": "2025-09-17", "2025-10": "2025-10-29", "2025-12": "2025-12-10",
+    "2026-01": "2026-01-28", "2026-03": "2026-03-18", "2026-04": "2026-04-29",
+    "2026-06": "2026-06-17", "2026-07": "2026-07-29", "2026-09": "2026-09-16",
+    "2026-10": "2026-10-28", "2026-12": "2026-12-09",
+}
+
+ZQ_MONTH_CODES = {1:"F", 2:"G", 3:"H", 4:"J", 5:"K", 6:"M", 7:"N", 8:"Q", 9:"U", 10:"V", 11:"X", 12:"Z"}
+
+
+def _market_cache_load():
+    if MARKET_PRICING_CACHE.exists():
+        try:
+            with open(MARKET_PRICING_CACHE) as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def _market_cache_save(cache):
+    try:
+        _atomic_json_dump(MARKET_PRICING_CACHE, cache)
+    except Exception as e:
+        print(f"Market-pricing cache save failed: {e}")
+
+
+def _contract_symbol_for_date(ts):
+    ts = pd.Timestamp(ts)
+    return f"ZQ{ZQ_MONTH_CODES[int(ts.month)]}{str(ts.year)[-2:]}.CBT"
+
+
+def _next_month(ts):
+    ts = pd.Timestamp(ts)
+    year = ts.year + (1 if ts.month == 12 else 0)
+    month = 1 if ts.month == 12 else ts.month + 1
+    return pd.Timestamp(year=year, month=month, day=1)
+
+
+def _fetch_yahoo_futures_close(symbol, before_date, lookback_days=21):
+    """Return latest daily close strictly before before_date using Yahoo Finance chart data."""
+    before = pd.Timestamp(before_date)
+    start = before - pd.Timedelta(days=lookback_days)
+    period1 = int(start.timestamp())
+    period2 = int((before + pd.Timedelta(days=1)).timestamp())
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+    params = {"period1": period1, "period2": period2, "interval": "1d", "events": "history"}
+    headers = {"User-Agent": "Mozilla/5.0 FedChairSimulator/1.0"}
+    r = requests.get(url, params=params, headers=headers, timeout=12)
+    if r.status_code != 200:
+        raise RuntimeError(f"Yahoo HTTP {r.status_code} for {symbol}")
+    payload = r.json()
+    res = (payload.get("chart") or {}).get("result") or []
+    if not res:
+        err = (payload.get("chart") or {}).get("error") or {}
+        raise RuntimeError(err.get("description") or f"No Yahoo result for {symbol}")
+    timestamps = res[0].get("timestamp") or []
+    closes = (((res[0].get("indicators") or {}).get("quote") or [{}])[0]).get("close") or []
+    rows = []
+    for t, c in zip(timestamps, closes):
+        if c is None:
+            continue
+        d = pd.to_datetime(int(t), unit="s").normalize()
+        if d < before.normalize():
+            rows.append((d, float(c)))
+    if not rows:
+        raise RuntimeError(f"No pre-meeting close for {symbol}")
+    rows.sort(key=lambda x: x[0])
+    d, close = rows[-1]
+    return d.strftime("%Y-%m-%d"), close
+
+
+def _fetch_effr_pre_rate(meeting_date):
+    """Average real EFFR from start of month through the day before/decision day.
+    Falls back to None if FRED is unavailable. Caller may use FEDFUNDS monthly data.
+    """
+    md = pd.Timestamp(meeting_date)
+    start = md.replace(day=1).strftime("%Y-%m-%d")
+    end = (md - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    if pd.Timestamp(end) < pd.Timestamp(start):
+        return None, "unavailable"
+    url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id=EFFR&cosd={start}&coed={end}"
+    r = requests.get(url, timeout=12)
+    if r.status_code != 200:
+        return None, f"FRED EFFR HTTP {r.status_code}"
+    from io import StringIO
+    df = pd.read_csv(StringIO(r.text))
+    if "EFFR" not in df.columns:
+        return None, "FRED EFFR missing"
+    vals = pd.to_numeric(df["EFFR"].replace(".", np.nan), errors="coerce").dropna()
+    if vals.empty:
+        return None, "FRED EFFR empty"
+    return float(vals.mean()), "FRED EFFR daily average"
+
+
+def _probabilities_from_implied_move(move_bps):
+    """Convert the futures-implied average move into adjacent 25bp outcome weights.
+    This uses futures only, not options, so it is a two-bucket approximation.
+    """
+    move = max(-150.0, min(150.0, float(move_bps)))
+    lo = math.floor(move / 25.0) * 25
+    hi = math.ceil(move / 25.0) * 25
+    if lo == hi:
+        buckets = {int(lo): 100.0}
+    else:
+        hi_w = (move - lo) / (hi - lo) * 100.0
+        buckets = {int(lo): 100.0 - hi_w, int(hi): hi_w}
+    labels = {-150:"cut_150", -125:"cut_125", -100:"cut_100", -75:"cut_75", -50:"cut_50", -25:"cut_25", 0:"hold",
+              25:"hike_25", 50:"hike_50", 75:"hike_75", 100:"hike_100", 125:"hike_125", 150:"hike_150"}
+    out = []
+    for bps in sorted(buckets):
+        out.append({"bps": bps, "label": labels.get(bps, f"{bps:+d}bps"), "probability": round(buckets[bps], 1)})
+    return out
+
+
+def _manual_market_pricing_lookup(era_name, ym):
+    if not USER_MARKET_PRICING_FILE.exists():
+        return None
+    try:
+        df = pd.read_csv(USER_MARKET_PRICING_FILE)
+        match = df[(df.get("era") == era_name) & (df.get("ym") == ym)]
+        if match.empty:
+            match = df[df.get("ym") == ym]
+        if match.empty:
+            return None
+        row = {k: _clean_for_json(v) for k, v in match.iloc[0].to_dict().items()}
+        raw_outcomes = row.get("outcomes_json") or row.get("outcomes")
+        if isinstance(raw_outcomes, str) and raw_outcomes.strip():
+            try:
+                row["outcomes"] = json.loads(raw_outcomes)
+            except Exception:
+                row["outcomes_parse_error"] = "Could not parse outcomes_json"
+        # Normalize common CSV variants.
+        if row.get("implied_rate") is not None and row.get("implied_avg_rate") is None:
+            row["implied_avg_rate"] = row.get("implied_rate")
+        return row
+    except Exception as e:
+        print(f"Manual market-pricing file unreadable: {e}")
+        return None
+
+
+def compute_real_market_pricing(era_name, ym):
+    """Real-data only market pricing before an FOMC decision.
+
+    It never fabricates probabilities. If futures history cannot be obtained, it
+    returns status='unavailable' and the UI clearly says so.
+    """
+    manual = _manual_market_pricing_lookup(era_name, ym)
+    if manual:
+        return {"status": "ok", "quality": "user_provided_real_data", "ym": ym, **manual}
+
+    key = f"{era_name}:{ym}"
+    cache = _market_cache_load()
+    if key in cache:
+        return cache[key]
+
+    meeting_date = FOMC_EXACT_DATES.get(ym)
+    if not meeting_date:
+        result = {"status": "unavailable", "ym": ym, "reason": "Exact FOMC date not mapped for this month. Add fed_funds_futures_pricing.csv for this era."}
+        cache[key] = result; _market_cache_save(cache); return result
+
+    md = pd.Timestamp(meeting_date)
+    if md < pd.Timestamp("2008-01-01"):
+        result = {"status": "unavailable", "ym": ym, "meeting_date": meeting_date,
+                  "reason": "Free public ZQ contract history is not reliable for this older era. Add licensed real data CSV for older meetings."}
+        cache[key] = result; _market_cache_save(cache); return result
+
+    try:
+        panel, _ = load_or_build()
+        month_start = pd.Timestamp(f"{ym}-01")
+        fallback_pre_rate = None
+        if month_start in panel.index:
+            fallback_pre_rate = float(panel.loc[month_start].get("fedFunds", np.nan))
+        # If the decision is at the very end of the month, use next-month futures.
+        days_in_month = calendar.monthrange(md.year, md.month)[1]
+        pre_days = int(md.day)
+        post_days = int(days_in_month - pre_days)
+        contract_month_date = md if post_days >= 5 else _next_month(md)
+        symbol = _contract_symbol_for_date(contract_month_date)
+        asof_date, close_price = _fetch_yahoo_futures_close(symbol, md)
+        implied_avg_rate = 100.0 - close_price
+        pre_rate, pre_rate_source = _fetch_effr_pre_rate(meeting_date)
+        if pre_rate is None or not math.isfinite(pre_rate):
+            if fallback_pre_rate is None or not math.isfinite(fallback_pre_rate):
+                raise RuntimeError(f"Could not fetch FRED EFFR or FEDFUNDS fallback for {ym}")
+            pre_rate = fallback_pre_rate
+            pre_rate_source = "FRED FEDFUNDS monthly average fallback"
+
+        if post_days >= 5:
+            expected_post_rate = ((implied_avg_rate * days_in_month) - (pre_rate * pre_days)) / max(post_days, 1)
+            calc_note = "Meeting-month ZQ contract adjusted for realized/pre-meeting EFFR days."
+        else:
+            expected_post_rate = implied_avg_rate
+            calc_note = "Decision near month-end: next-month ZQ contract used as post-meeting rate proxy."
+        market_implied_bps = (expected_post_rate - pre_rate) * 100.0
+        outcomes = _probabilities_from_implied_move(market_implied_bps)
+        result = {
+            "status": "ok",
+            "quality": "real_zq_futures",
+            "ym": ym,
+            "meeting_date": meeting_date,
+            "asof_date": asof_date,
+            "source": "Yahoo Finance historical ZQ contract close + FRED EFFR",
+            "source_url_hint": "Yahoo chart API for individual ZQ futures; FRED EFFR daily series",
+            "contract": symbol,
+            "price": round(close_price, 5),
+            "implied_avg_rate": round(implied_avg_rate, 4),
+            "pre_meeting_rate": round(pre_rate, 4),
+            "pre_rate_source": pre_rate_source,
+            "expected_post_rate": round(expected_post_rate, 4),
+            "market_implied_bps": round(market_implied_bps, 1),
+            "outcomes": outcomes,
+            "calc_note": calc_note,
+        }
+    except Exception as e:
+        result = {"status": "unavailable", "ym": ym, "meeting_date": meeting_date, "reason": str(e)}
+    cache[key] = result
+    _market_cache_save(cache)
+    return result
+
+
+# ── REAL MARKET PRICING CSV BUILDER ────────────────────────────────────────────
+
+MARKET_PRICING_CSV_COLUMNS = [
+    "era", "ym", "meeting_date", "asof_date", "status", "quality", "source",
+    "contract", "price", "implied_avg_rate", "pre_meeting_rate",
+    "expected_post_rate", "market_implied_bps", "outcomes_json", "reason"
+]
+
+
+def _csv_bool_arg(name, default=False):
+    raw = str(request.args.get(name, "")).strip().lower()
+    if not raw:
+        return default
+    return raw in {"1", "true", "yes", "y", "on"}
+
+
+def _market_pricing_result_to_csv_row(era_name, ym, result):
+    outcomes = result.get("outcomes")
+    if not outcomes and isinstance(result.get("outcomes_json"), str):
+        try:
+            outcomes = json.loads(result.get("outcomes_json"))
+        except Exception:
+            outcomes = None
+    row = {
+        "era": era_name,
+        "ym": ym,
+        "meeting_date": result.get("meeting_date") or FOMC_EXACT_DATES.get(ym),
+        "asof_date": result.get("asof_date"),
+        "status": result.get("status", "unavailable"),
+        "quality": result.get("quality"),
+        "source": result.get("source"),
+        "contract": result.get("contract"),
+        "price": result.get("price"),
+        "implied_avg_rate": result.get("implied_avg_rate") or result.get("implied_rate"),
+        "pre_meeting_rate": result.get("pre_meeting_rate"),
+        "expected_post_rate": result.get("expected_post_rate"),
+        "market_implied_bps": result.get("market_implied_bps"),
+        "outcomes_json": json.dumps(outcomes, separators=(",", ":")) if outcomes else "",
+        "reason": result.get("reason"),
+    }
+    return {col: _clean_for_json(row.get(col)) for col in MARKET_PRICING_CSV_COLUMNS}
+
+
+def _iter_meeting_months_for_csv(era_filter=None, start_ym=None, end_ym=None, include_future=False):
+    today = pd.Timestamp.utcnow().tz_localize(None).normalize()
+    era_names = [era_filter] if era_filter and era_filter in ERA_WINDOWS else list(ERA_WINDOWS.keys())
+    for era_name in era_names:
+        months = sorted(ERA_FOMC_MONTHS.get(era_name, []))
+        for ym in months:
+            if ym not in FOMC_EXACT_DATES:
+                continue
+            if start_ym and ym < start_ym:
+                continue
+            if end_ym and ym > end_ym:
+                continue
+            md = pd.Timestamp(FOMC_EXACT_DATES[ym])
+            if (not include_future) and md >= today:
+                continue
+            yield era_name, ym
+
+
+def build_market_pricing_csv_rows(era_filter=None, start_ym=None, end_ym=None, include_unavailable=False, refresh=False, include_future=False):
+    """Fetch real pre-FOMC market pricing and return CSV rows.
+
+    This function does not fabricate probabilities. Rows are emitted only when a
+    real source succeeds unless include_unavailable=True.
+    """
+    if refresh:
+        MARKET_PRICING_CACHE.unlink(missing_ok=True)
+    rows = []
+    status_counts = {"ok": 0, "unavailable": 0}
+    for era_name, ym in _iter_meeting_months_for_csv(era_filter, start_ym, end_ym, include_future):
+        res = compute_real_market_pricing(era_name, ym)
+        status = res.get("status", "unavailable")
+        status_counts[status] = status_counts.get(status, 0) + 1
+        if status == "ok" or include_unavailable:
+            rows.append(_market_pricing_result_to_csv_row(era_name, ym, res))
+    rows.sort(key=lambda r: (r.get("era") or "", r.get("ym") or ""))
+    return rows, status_counts
+
+
+def _rows_to_csv_text(rows):
+    from io import StringIO
+    buf = StringIO()
+    writer = csv.DictWriter(buf, fieldnames=MARKET_PRICING_CSV_COLUMNS, lineterminator="\n")
+    writer.writeheader()
+    for r in rows:
+        writer.writerow({col: "" if r.get(col) is None else r.get(col) for col in MARKET_PRICING_CSV_COLUMNS})
+    return buf.getvalue()
+
+
+def save_market_pricing_csv(rows):
+    text = _rows_to_csv_text(rows)
+    USER_MARKET_PRICING_FILE.write_text(text, encoding="utf-8")
+    runtime_path = DATA_DIR / "fed_funds_futures_pricing.csv"
+    runtime_path.write_text(text, encoding="utf-8")
+    return USER_MARKET_PRICING_FILE, runtime_path
+
 # ── STEP 9: EVENTS WITH MODEL EFFECTS ─────────────────────────────────────────
 
 HISTORICAL_EVENTS = {
@@ -652,6 +1022,96 @@ def get_era_data(era_name):
             "cacheVersion": model.get("cacheVersion"),
         },
     }))
+
+
+@app.route("/api/market-pricing/<era_name>/<ym>")
+def market_pricing(era_name, ym):
+    if era_name not in ERA_WINDOWS:
+        return jsonify({"status": "unavailable", "error": "Unknown era"}), 400
+    if not isinstance(ym, str) or len(ym) != 7 or ym[4] != "-":
+        return jsonify({"status": "unavailable", "error": "ym must be YYYY-MM"}), 400
+    return jsonify(_clean_for_json(compute_real_market_pricing(era_name, ym)))
+
+@app.route("/api/market-pricing-cache/clear", methods=["POST"])
+def clear_market_pricing_cache():
+    MARKET_PRICING_CACHE.unlink(missing_ok=True)
+    return jsonify({"status": "cleared"})
+
+
+@app.route("/api/market-pricing-csv/build", methods=["GET", "POST"])
+def build_market_pricing_csv_endpoint():
+    """Build fed_funds_futures_pricing.csv from real public market data.
+
+    Query params:
+      era=powell|bernanke|greenspan|volcker (optional)
+      start=YYYY-MM (optional)
+      end=YYYY-MM (optional)
+      include_unavailable=1 to include failed rows with reasons
+      refresh=1 to clear the cache first
+      include_future=1 to try future meetings too
+    """
+    era_filter = request.args.get("era") or None
+    start_ym = request.args.get("start") or None
+    end_ym = request.args.get("end") or None
+    include_unavailable = _csv_bool_arg("include_unavailable", False)
+    refresh = _csv_bool_arg("refresh", False)
+    include_future = _csv_bool_arg("include_future", False)
+    rows, counts = build_market_pricing_csv_rows(
+        era_filter=era_filter,
+        start_ym=start_ym,
+        end_ym=end_ym,
+        include_unavailable=include_unavailable,
+        refresh=refresh,
+        include_future=include_future,
+    )
+    root_path, runtime_path = save_market_pricing_csv(rows)
+    return jsonify(_clean_for_json({
+        "status": "ok",
+        "rows_written": len(rows),
+        "source_rule": "Real rows only unless include_unavailable=1. No fake probabilities are created.",
+        "status_counts": counts,
+        "root_csv": str(root_path.name),
+        "runtime_csv": str(runtime_path.relative_to(ROOT)) if runtime_path.is_relative_to(ROOT) else str(runtime_path),
+        "download_url": "/api/market-pricing-csv/download",
+    }))
+
+
+@app.route("/api/market-pricing-csv/download")
+def download_market_pricing_csv_endpoint():
+    """Download the generated real market-pricing CSV."""
+    if USER_MARKET_PRICING_FILE.exists():
+        text = USER_MARKET_PRICING_FILE.read_text(encoding="utf-8")
+    elif (DATA_DIR / "fed_funds_futures_pricing.csv").exists():
+        text = (DATA_DIR / "fed_funds_futures_pricing.csv").read_text(encoding="utf-8")
+    else:
+        rows, _ = build_market_pricing_csv_rows(era_filter=request.args.get("era") or "powell")
+        text = _rows_to_csv_text(rows)
+    return Response(
+        text,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=fed_funds_futures_pricing.csv"},
+    )
+
+
+@app.route("/api/market-pricing-csv/status")
+def market_pricing_csv_status_endpoint():
+    exists = USER_MARKET_PRICING_FILE.exists()
+    runtime_exists = (DATA_DIR / "fed_funds_futures_pricing.csv").exists()
+    row_count = 0
+    if exists:
+        try:
+            with open(USER_MARKET_PRICING_FILE, newline="") as f:
+                row_count = max(0, sum(1 for _ in f) - 1)
+        except Exception:
+            row_count = None
+    return jsonify({
+        "status": "ok",
+        "root_csv_exists": exists,
+        "runtime_csv_exists": runtime_exists,
+        "root_csv_rows": row_count,
+        "build_url": "/api/market-pricing-csv/build?era=powell&start=2020-01&end=2026-12",
+        "download_url": "/api/market-pricing-csv/download",
+    })
 
 @app.route("/api/refresh", methods=["POST"])
 def refresh_data():

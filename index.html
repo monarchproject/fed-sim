@@ -214,6 +214,39 @@
   .char-quote { font-size: 13px; color: var(--text); line-height: 1.55; font-style: italic; }
   .char-dismiss { font-size: 10px; color: var(--text3); margin-top: 6px; letter-spacing: 0.08em; }
 
+
+
+  /* ── GAMEPLAY UPGRADE PANELS ── */
+  .credibility-pill { font-size: 12px; border: 1px solid var(--border2); border-radius: 4px; padding: 2px 8px; background: #141414; font-weight: 700; letter-spacing: 0.1em; }
+  .mission-box { background: linear-gradient(180deg, rgba(255,176,32,0.08), rgba(255,176,32,0.02)); border: 2px solid #5a4a18; border-radius: 6px; padding: 10px 12px; line-height: 1.6; }
+  .mission-title { color: var(--yellow); font-weight: 700; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 4px; }
+  .mission-body { color: var(--text2); font-size: 13px; }
+  .mission-progress { margin-top: 7px; height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+  .mission-fill { height: 100%; width: 0%; background: var(--yellow); transition: width 0.35s; }
+  .advisor-grid { display: grid; grid-template-columns: 1fr; gap: 7px; }
+  .advisor-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 5px; padding: 8px 10px; }
+  .advisor-name { color: var(--text3); font-size: 10px; letter-spacing: 0.14em; font-weight: 700; margin-bottom: 4px; text-transform: uppercase; }
+  .advisor-quote { color: var(--text2); font-size: 12px; line-height: 1.45; }
+  .reaction-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: 8px; }
+  .reaction-cell { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 7px 8px; }
+  .reaction-lbl { color: var(--text3); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; }
+  .reaction-val { color: var(--text); font-size: 15px; font-weight: 700; margin-top: 2px; }
+  .reaction-note { color: var(--text2); font-size: 12px; line-height: 1.5; border-top: 1px solid var(--border); padding-top: 7px; }
+  .pricing-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: 8px; }
+  .pricing-cell { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 7px 8px; }
+  .pricing-lbl { color: var(--text3); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; }
+  .pricing-val { color: var(--text); font-size: 15px; font-weight: 700; margin-top: 2px; }
+  .pricing-outcome { display:flex; align-items:center; gap:6px; margin:5px 0; font-size:12px; }
+  .pricing-outcome-name { width:72px; color:var(--text2); }
+  .pricing-bar-bg { flex:1; height:6px; background:var(--bg3); border-radius:999px; overflow:hidden; border:1px solid var(--border); }
+  .pricing-bar-fill { height:100%; background:var(--accent); }
+  .pricing-outcome-prob { width:44px; text-align:right; color:var(--text); font-weight:700; }
+  .pricing-note { color: var(--text2); font-size: 12px; line-height: 1.5; border-top: 1px solid var(--border); padding-top: 7px; }
+  .achievement-list { display: flex; flex-wrap: wrap; gap: 5px; }
+  .achievement-badge { display: inline-block; border: 1px solid #4a3a8a; background: #18163a; color: var(--purple); border-radius: 999px; padding: 3px 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; }
+  .achievement-empty { color: var(--text3); font-size: 12px; }
+  .final-extra { margin-top: 0.8rem; color: var(--text2); font-size: 13px; line-height: 1.7; }
+
   /* ── RESPONSIVE / FIT-TO-SCREEN ── */
 
   /* Clamp root font size so everything scales with viewport */
@@ -301,6 +334,225 @@
     .left-panel { gap: 5px; }
   }
 
+
+  /* ── RENDER UI FIX: responsive full-width layout ─────────────────────────
+     Fixes narrow-browser/mobile clipping where the control panel + charts were
+     squeezed into side-by-side columns and parts of the dashboard disappeared.
+     Desktop keeps the 3-column cockpit; tablet moves the right panel below;
+     mobile stacks everything vertically with normal page scrolling. */
+  .left-panel, .center-panel, .right-panel, .metric, .controls-box, .chart-block {
+    min-width: 0;
+  }
+  .metric-label, .chart-title, .section-label, .event-title {
+    overflow-wrap: anywhere;
+  }
+  .metric-dual {
+    flex-wrap: wrap;
+  }
+  .rate-controls, .qe-controls, .tone-row {
+    flex-wrap: wrap;
+  }
+  .rate-btn, .qe-btn, .tone-btn {
+    min-width: max-content;
+  }
+
+  /* Give desktop panels enough width for labels/numbers. */
+  @media (min-width: 1181px) {
+    .game-body {
+      grid-template-columns: minmax(320px, 360px) minmax(520px, 1fr) minmax(300px, 340px);
+    }
+    .chart-wrap {
+      height: clamp(115px, 13vh, 155px);
+    }
+  }
+
+  /* Medium screens: keep controls + charts side-by-side, move info panel below. */
+  @media (max-width: 1180px) and (min-width: 901px) {
+    html, body { overflow: hidden; }
+    .game-body {
+      grid-template-columns: minmax(320px, 38vw) minmax(420px, 1fr);
+      grid-template-rows: minmax(0, 1fr) auto;
+    }
+    .right-panel {
+      grid-column: 1 / -1;
+      border-left: none;
+      border-top: 2px solid var(--border);
+      max-height: 220px;
+      flex-direction: row;
+      flex-wrap: wrap;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    .right-panel > * { flex: 1 1 220px; min-width: 220px; }
+    #event-feed { display: block; }
+  }
+
+  /* Narrow screens / phone: stack everything; do not crop the game. */
+  @media (max-width: 900px) {
+    html, body {
+      height: auto;
+      min-height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    .screen {
+      height: auto;
+      min-height: 100vh;
+      overflow: visible;
+    }
+    .screen.active {
+      display: flex;
+    }
+    .top-bar {
+      flex-wrap: wrap;
+      overflow-x: visible;
+      align-items: flex-start;
+      gap: 6px 10px;
+    }
+    .game-body {
+      display: flex;
+      flex-direction: column;
+      height: auto;
+      min-height: 0;
+      overflow: visible;
+    }
+    .left-panel, .center-panel, .right-panel {
+      width: 100%;
+      max-height: none;
+      overflow: visible;
+      border-left: none;
+      border-right: none;
+    }
+    .left-panel { border-bottom: 2px solid var(--border); }
+    .center-panel { border-bottom: 2px solid var(--border); }
+    .right-panel {
+      flex-direction: column;
+      flex-wrap: nowrap;
+      padding: 10px;
+    }
+    .right-panel > * {
+      flex: none;
+      min-width: 0;
+      width: 100%;
+    }
+    #event-feed { display: block; }
+    .metrics-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .metric {
+      padding: 8px;
+    }
+    .metric-label {
+      font-size: 11px;
+      line-height: 1.25;
+    }
+    .metric-real {
+      font-size: clamp(18px, 5vw, 24px);
+    }
+    .metric-player {
+      font-size: clamp(15px, 4vw, 20px);
+    }
+    .controls-box {
+      padding: 10px;
+    }
+    .rate-display {
+      font-size: clamp(2rem, 8vw, 3rem);
+    }
+    .rate-btn, .qe-btn, .tone-btn {
+      min-width: 84px;
+      flex: 1 1 84px;
+    }
+    .chart-wrap {
+      height: 220px;
+      min-height: 220px;
+    }
+    .chart-block {
+      padding: 10px;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .metrics-grid {
+      grid-template-columns: 1fr;
+    }
+    .chart-wrap {
+      height: 200px;
+      min-height: 200px;
+    }
+    .rate-btn, .qe-btn, .tone-btn {
+      min-width: 100%;
+    }
+  }
+
+
+
+  /* ── CREATIVE COCKPIT UPGRADE: decision-flow tabs + chart studio ─────────── */
+  .source-pill {
+    display:inline-flex; align-items:center; gap:4px;
+    border:1px solid var(--border2); border-radius:999px;
+    padding:2px 7px; font-size:9px; letter-spacing:.12em; font-weight:800;
+    text-transform:uppercase; white-space:nowrap; background:#111;
+  }
+  .source-real { color:var(--real); border-color:rgba(58,127,204,.55); }
+  .source-mkt  { color:var(--accent); border-color:rgba(74,159,255,.55); }
+  .source-sim  { color:var(--player); border-color:rgba(224,154,32,.55); }
+  .source-model{ color:var(--purple); border-color:rgba(170,120,255,.55); }
+
+  .cockpit-hero {
+    border:2px solid var(--border2); border-radius:8px;
+    background:linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.015));
+    padding:10px; display:flex; flex-direction:column; gap:9px;
+  }
+  .cockpit-hero-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .cockpit-kicker { color:var(--text3); font-size:10px; letter-spacing:.18em; font-weight:800; text-transform:uppercase; }
+  .cockpit-title { color:var(--text); font-size:18px; font-weight:900; letter-spacing:.08em; margin-top:2px; }
+  .cockpit-sub { color:var(--text2); font-size:12px; line-height:1.45; margin-top:4px; }
+  .cockpit-badges { display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end; }
+  .cockpit-grid { display:grid; grid-template-columns: 1.2fr .8fr; gap:9px; min-height:170px; }
+  .cockpit-card { background:var(--bg2); border:1px solid var(--border); border-radius:7px; padding:9px; min-width:0; }
+  .cockpit-card-title { color:var(--text3); font-size:10px; letter-spacing:.16em; font-weight:800; text-transform:uppercase; margin-bottom:6px; }
+  .cockpit-chart { height:145px; min-height:145px; }
+  .decision-snapshot { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .decision-tile { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:8px; }
+  .decision-tile-lbl { color:var(--text3); font-size:9px; letter-spacing:.12em; text-transform:uppercase; font-weight:700; }
+  .decision-tile-val { color:var(--text); font-size:16px; font-weight:900; margin-top:3px; }
+  .decision-tile-note { color:var(--text2); font-size:11px; line-height:1.35; margin-top:3px; }
+  .surprise-strip { margin-top:8px; border-top:1px solid var(--border); padding-top:8px; color:var(--text2); font-size:12px; line-height:1.45; }
+  .chart-tabs { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .chart-tab {
+    border:1px solid var(--border); background:var(--bg2); color:var(--text2);
+    border-radius:999px; padding:6px 10px; font-family:inherit; font-size:11px;
+    letter-spacing:.11em; font-weight:800; text-transform:uppercase; cursor:pointer;
+  }
+  .chart-tab:hover { border-color:var(--border2); color:var(--text); }
+  .chart-tab.active { border-color:var(--accent); color:var(--accent); background:rgba(74,159,255,.08); }
+  .chart-deck { display:none; grid-template-columns:1fr 1fr; gap:8px; }
+  .chart-deck .chart-block { display:block; }
+  .center-panel.deck-market > .chart-block,
+  .center-panel.deck-player > .chart-block,
+  .center-panel.deck-audit > .chart-block { display:none; }
+  .center-panel.deck-market #chart-deck-market,
+  .center-panel.deck-player #chart-deck-player,
+  .center-panel.deck-audit #chart-deck-audit { display:grid; }
+  .center-panel.deck-market #chart-deck-macro,
+  .center-panel.deck-player #chart-deck-macro,
+  .center-panel.deck-audit #chart-deck-macro { display:none; }
+  .audit-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  .audit-card { background:var(--bg2); border:1px solid var(--border); border-radius:7px; padding:10px; min-height:92px; }
+  .audit-title { color:var(--text); font-weight:900; font-size:12px; letter-spacing:.12em; margin-bottom:6px; text-transform:uppercase; }
+  .audit-body { color:var(--text2); font-size:12px; line-height:1.55; }
+  .decision-ledger { max-height:260px; overflow:auto; border:1px solid var(--border); border-radius:7px; }
+  .ledger-table { width:100%; border-collapse:collapse; font-size:11px; }
+  .ledger-table th { position:sticky; top:0; background:var(--bg); color:var(--text3); font-size:9px; letter-spacing:.12em; text-transform:uppercase; padding:6px; text-align:left; border-bottom:1px solid var(--border); }
+  .ledger-table td { padding:6px; border-bottom:1px solid var(--border); color:var(--text2); white-space:nowrap; }
+  .ledger-table tr:last-child td { border-bottom:none; }
+  .chart-mini-note { color:var(--text3); font-size:10px; line-height:1.45; margin-top:5px; }
+  @media (max-width: 980px) {
+    .cockpit-grid, .chart-deck, .audit-grid { grid-template-columns:1fr; }
+    .cockpit-hero-head { flex-direction:column; }
+    .cockpit-badges { justify-content:flex-start; }
+  }
+
 </style>
 </head>
 <body>
@@ -343,7 +595,7 @@
   </div>
   <button class="start-btn" id="start-btn" onclick="startGame()" disabled>SELECT AN ERA TO BEGIN</button>
   <div style="font-size:0.57rem;color:var(--text3);margin-top:0.9rem;letter-spacing:0.1em;">
-    REAL FRED DATA · REGIME VAR · FORWARD EXPECTATIONS · IRF-CALIBRATED
+    OFFICIAL MACRO DATA + REAL ZQ MARKET PRICING + CALIBRATED SIMULATION
   </div>
 </div>
 
@@ -369,6 +621,8 @@
     <span class="divergence-badge" id="divergence-badge">DIV 0.0</span>
     <span class="dim">|</span>
     <span class="dim">SCORE</span><span class="val" id="score-display">0</span>
+    <span class="dim">|</span>
+    <span class="credibility-pill" id="credibility-pill">CRED 70</span>
   </div>
 
   <div class="game-body">
@@ -380,6 +634,11 @@
         <div class="track-legend" style="margin-bottom:6px;">
           <span class="tleg-r">── REAL</span>
           <span class="tleg-p">── PLAYER</span>
+        </div>
+        <div class="mission-box" id="mission-box" style="margin-bottom:8px;">
+          <div class="mission-title" id="mission-title">MISSION OBJECTIVE</div>
+          <div class="mission-body" id="mission-body">Keep inflation credible without breaking employment.</div>
+          <div class="mission-progress"><div class="mission-fill" id="mission-fill"></div></div>
         </div>
         <div class="metrics-grid">
           <div class="metric">
@@ -471,10 +730,81 @@
     </div>
 
     <!-- CENTER: stacked charts -->
-    <div class="center-panel" id="center-panel">
+    <div class="center-panel deck-macro" id="center-panel">
       <div class="crisis-bar">
         <div id="recession-banner" class="recession-banner">⚠ RECESSION — 2 CONSECUTIVE MONTHS NEGATIVE GROWTH</div>
         <div id="inflation-crisis-banner" class="inflation-crisis-banner">⚠ INFLATION CRISIS — CREDIBILITY AT RISK</div>
+      </div>
+
+
+      <div class="cockpit-hero" id="cockpit-hero">
+        <div class="cockpit-hero-head">
+          <div>
+            <div class="cockpit-kicker" id="cockpit-kicker">FOMC DECISION COCKPIT</div>
+            <div class="cockpit-title" id="cockpit-headline">Read the economy, then surprise the market carefully.</div>
+            <div class="cockpit-sub" id="cockpit-subtitle">Real data feeds the macro board. Your decisions create a simulated alternate path.</div>
+          </div>
+          <div class="cockpit-badges">
+            <span class="source-pill source-real">Real macro</span>
+            <span class="source-pill source-mkt">Real market pricing</span>
+            <span class="source-pill source-sim">Simulated player path</span>
+          </div>
+        </div>
+        <div class="cockpit-grid">
+          <div class="cockpit-card">
+            <div class="cockpit-card-title">Market priced before decision</div>
+            <div class="cockpit-chart"><canvas id="chart-market-dist"></canvas></div>
+            <div class="chart-mini-note" id="market-dist-note">Real sourced probability buckets appear on FOMC months.</div>
+          </div>
+          <div class="cockpit-card">
+            <div class="cockpit-card-title">Decision readout</div>
+            <div class="decision-snapshot" id="decision-snapshot">
+              <div class="decision-tile"><div class="decision-tile-lbl">Market</div><div class="decision-tile-val">—</div><div class="decision-tile-note">waiting</div></div>
+              <div class="decision-tile"><div class="decision-tile-lbl">You</div><div class="decision-tile-val">HOLD</div><div class="decision-tile-note">pending</div></div>
+              <div class="decision-tile"><div class="decision-tile-lbl">Real Fed</div><div class="decision-tile-val">—</div><div class="decision-tile-note">historical move</div></div>
+              <div class="decision-tile"><div class="decision-tile-lbl">Surprise</div><div class="decision-tile-val">—</div><div class="decision-tile-note">vs market</div></div>
+            </div>
+            <div class="surprise-strip" id="surprise-strip">On decision months, market reaction is driven by the gap between your decision and the market-implied move.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-tabs" id="chart-tabs">
+        <button class="chart-tab active" id="tab-macro" onclick="setChartDeck('macro')">Macro</button>
+        <button class="chart-tab" id="tab-market" onclick="setChartDeck('market')">Market pricing</button>
+        <button class="chart-tab" id="tab-player" onclick="setChartDeck('player')">Player history</button>
+        <button class="chart-tab" id="tab-audit" onclick="setChartDeck('audit')">Source audit</button>
+      </div>
+
+      <div class="chart-deck" id="chart-deck-market">
+        <div class="chart-block">
+          <div class="chart-block-header"><span class="chart-title">RATE PATH: REAL FED vs YOU vs MARKET</span><span class="chart-subtitle">Market points only where real pricing exists</span></div>
+          <div class="chart-wrap"><canvas id="chart-rate-path"></canvas></div>
+        </div>
+        <div class="chart-block">
+          <div class="chart-block-header"><span class="chart-title">FOMC SURPRISE LEDGER</span><span class="chart-subtitle">Your decision and real Fed vs market-implied move</span></div>
+          <div class="chart-wrap"><canvas id="chart-surprise"></canvas></div>
+        </div>
+      </div>
+
+      <div class="chart-deck" id="chart-deck-player">
+        <div class="chart-block">
+          <div class="chart-block-header"><span class="chart-title">CREDIBILITY / APPROVAL PATH</span><span class="chart-subtitle">Gameplay score, not official data</span></div>
+          <div class="chart-wrap"><canvas id="chart-credibility"></canvas></div>
+        </div>
+        <div class="chart-block">
+          <div class="chart-block-header"><span class="chart-title">DECISION HISTORY TABLE</span><span class="chart-subtitle">Player vs market vs historical Fed</span></div>
+          <div class="decision-ledger" id="decision-ledger"><div style="padding:10px;color:var(--text3);font-size:12px;">No FOMC decisions yet.</div></div>
+        </div>
+      </div>
+
+      <div class="chart-deck" id="chart-deck-audit">
+        <div class="audit-grid">
+          <div class="audit-card"><div class="audit-title"><span class="source-pill source-real">Real data</span> Macro</div><div class="audit-body">CPI, unemployment, GDP/activity, Fed funds, and Treasury series come from the bundled official macro dataset built from FRED sources.</div></div>
+          <div class="audit-card"><div class="audit-title"><span class="source-pill source-mkt">Real market</span> Pricing</div><div class="audit-body">Pre-FOMC market-implied moves use the included real sourced market-pricing CSV. Missing rows stay unavailable instead of being invented.</div></div>
+          <div class="audit-card"><div class="audit-title"><span class="source-pill source-sim">Simulation</span> Player path</div><div class="audit-body">Your alternate inflation, unemployment, growth, approval, and credibility paths are model/game outputs driven by policy choices and shocks.</div></div>
+          <div class="audit-card"><div class="audit-title"><span class="source-pill source-model">Model</span> Transmission</div><div class="audit-body">Policy effects are lagged through the app's regime/IRF logic. Reactions use surprise versus market-implied pricing.</div></div>
+        </div>
       </div>
 
       <div class="chart-block">
@@ -531,6 +861,34 @@
 
     <!-- RIGHT: sidebar -->
     <div class="right-panel">
+
+      <div class="section-label">FOMC Advisors</div>
+      <div class="advisor-grid" id="advisor-grid">
+        <div class="advisor-card"><div class="advisor-name">Hawk</div><div class="advisor-quote">Waiting for data...</div></div>
+      </div>
+
+      <div class="section-label">Real Market Pricing Before FOMC</div>
+      <div class="info-box" id="market-pricing-box">
+        <div class="pricing-grid">
+          <div class="pricing-cell"><div class="pricing-lbl">Implied move</div><div class="pricing-val" id="pricing-implied">—</div></div>
+          <div class="pricing-cell"><div class="pricing-lbl">Contract</div><div class="pricing-val" id="pricing-contract">—</div></div>
+          <div class="pricing-cell"><div class="pricing-lbl">As of</div><div class="pricing-val" id="pricing-asof">—</div></div>
+          <div class="pricing-cell"><div class="pricing-lbl">Price</div><div class="pricing-val" id="pricing-price">—</div></div>
+        </div>
+        <div id="pricing-outcomes"></div>
+        <div class="pricing-note" id="pricing-note">Real ZQ futures pricing loads on FOMC months. No fake fallback is used.</div>
+      </div>
+
+      <div class="section-label">Market Reaction</div>
+      <div class="info-box" id="market-reaction-box">
+        <div class="reaction-grid">
+          <div class="reaction-cell"><div class="reaction-lbl">Stocks</div><div class="reaction-val" id="react-stocks">—</div></div>
+          <div class="reaction-cell"><div class="reaction-lbl">2Y Yield</div><div class="reaction-val" id="react-y2">—</div></div>
+          <div class="reaction-cell"><div class="reaction-lbl">Dollar</div><div class="reaction-val" id="react-dollar">—</div></div>
+          <div class="reaction-cell"><div class="reaction-lbl">Credit</div><div class="reaction-val" id="react-credit">—</div></div>
+        </div>
+        <div class="reaction-note" id="react-note">Make a FOMC decision to see how markets price your credibility.</div>
+      </div>
 
       <div class="section-label">Active Policy Pipeline</div>
       <div class="info-box" id="pipeline-box" style="font-size:13px;line-height:1.9;">
@@ -600,6 +958,9 @@
           </tbody>
         </table>
       </div>
+
+      <div class="section-label">Achievements</div>
+      <div class="info-box"><div class="achievement-list" id="achievement-list"><span class="achievement-empty">No achievements yet.</span></div></div>
 
       <div class="section-label">Event Log</div>
       <div id="event-feed">
@@ -874,7 +1235,7 @@ const CHARACTER_REACTIONS = {
         '"My mortgage payment went up AGAIN. I\'m choosing between heat and food. Thanks for the economic theory, Paul." — Ohio homeowner',
         '"I work three jobs. THREE JOBS. And I still can\'t make rent. The Fed Chair makes $60,000 a year by the way." — Pittsburgh steelworker',
         '"My car loan, my mortgage, my credit card — all up. Volcker is personally billing me for his inflation fight." — Rust Belt dad',
-        '"I heard Paul Volcker is 6\'7\". That\'s a big man. A big man making big mistakes that affect my small family." — Factory worker',
+        '"I heard Paul Volcker is 6\'7". That\'s a big man. A big man making big mistakes that affect my small family." — Factory worker',
       ]},
       cut_happy:       { mood:'happy',  quotes:[
         '"Prices at the grocery store stabilizing. First time in years I didn\'t have a minor breakdown at the checkout." — Detroit worker',
@@ -1784,6 +2145,7 @@ async function startGame() {
     initState();
     showScreen('game-screen');
     initAllCharts();
+    setChartDeck('macro');
     renderAll();
   } catch(e) {
     hideLoading();
@@ -1826,6 +2188,12 @@ function initState() {
     tone: 'neutral',
     approval: { markets: 50, congress: 50, public: 50, econ: 50 },
     fedApproval: initFedApproval(),
+    credibility: 70,
+    lastMarketReaction: null,
+    marketPricing: {},
+    marketPricingLoading: {},
+    lastMarketPricing: null,
+    achievements: [],
     score: 0,
     fedScore: 0,
     // STEP 13: divergence tracking
@@ -1842,6 +2210,10 @@ function initState() {
       p_growth:          [m0.growth || 2.0],
       p_rate:            [m0.fedFunds],
       p_spread:          [m0.yieldSpread || 1.5],
+      credibility:       [70],
+      approval:          [50],
+      score:             [0],
+      market_rate:       [null],
     },
     firedEvents: new Set(),
     _reactionPipeline: [],
@@ -1862,6 +2234,147 @@ function formatDate(s) {
 }
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 function realMonth() { return eraData[state.monthIdx]; }
+
+function fmtBpsSigned(bps) {
+  const v = Number(bps);
+  if (!Number.isFinite(v)) return 'n/a';
+  const r = Math.round(v);
+  if (r > 0) return `+${r}bps`;
+  if (r < 0) return `${r}bps`;
+  return 'HOLD';
+}
+
+function currentPricingYm() {
+  if (!eraData || !state || state.monthIdx === undefined) return '';
+  const rm = realMonth();
+  return rm && rm.date ? String(rm.date).slice(0, 7) : '';
+}
+
+function getCurrentPricing() {
+  const ym = currentPricingYm();
+  if (!ym || !state.marketPricing) return null;
+  return state.marketPricing[ym] || null;
+}
+
+function parsePricingOutcomes(pricing) {
+  if (!pricing) return [];
+  if (Array.isArray(pricing.outcomes)) return pricing.outcomes;
+  if (Array.isArray(pricing.probabilities)) return pricing.probabilities;
+  if (typeof pricing.outcomes_json === 'string' && pricing.outcomes_json.trim()) {
+    try { return JSON.parse(pricing.outcomes_json); } catch (e) { return []; }
+  }
+  return [];
+}
+
+function setPricingText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
+async function loadMarketPricingForCurrentMonth() {
+  if (!state || !eraData || state.monthIdx === undefined) return;
+  const rm = realMonth();
+  if (!rm || rm.isMeeting !== 1) return;
+  const ym = currentPricingYm();
+  if (!ym) return;
+  if (!state.marketPricing) state.marketPricing = {};
+  if (!state.marketPricingLoading) state.marketPricingLoading = {};
+  if (state.marketPricing[ym] || state.marketPricingLoading[ym]) return;
+
+  state.marketPricingLoading[ym] = true;
+  renderMarketPricing();
+  try {
+    const res = await fetch(`${API_BASE}/api/market-pricing/${state.era}/${ym}`);
+    const data = await res.json();
+    state.marketPricing[ym] = data || { status: 'unavailable', ym, reason: 'Empty response' };
+    state.lastMarketPricing = state.marketPricing[ym];
+  } catch (e) {
+    state.marketPricing[ym] = { status: 'unavailable', ym, reason: e.message || String(e) };
+  } finally {
+    state.marketPricingLoading[ym] = false;
+    renderMarketPricing();
+    renderAdvisors();
+    updateCommandCenter();
+    updateCreativeCharts();
+  }
+}
+
+function renderMarketPricing() {
+  const box = document.getElementById('market-pricing-box');
+  if (!box || !state || !eraData || state.monthIdx === undefined) return;
+  const rm = realMonth();
+  const ym = currentPricingYm();
+  const outcomesEl = document.getElementById('pricing-outcomes');
+  const noteEl = document.getElementById('pricing-note');
+
+  if (!rm || rm.isMeeting !== 1) {
+    setPricingText('pricing-implied', '—');
+    setPricingText('pricing-contract', 'No FOMC');
+    setPricingText('pricing-asof', '—');
+    setPricingText('pricing-price', '—');
+    if (outcomesEl) outcomesEl.innerHTML = '<div style="color:var(--text3);font-size:11px">No meeting this month.</div>';
+    if (noteEl) noteEl.textContent = 'Market pricing is shown only on FOMC meeting months.';
+    return;
+  }
+
+  if (!state.marketPricing) state.marketPricing = {};
+  if (!state.marketPricingLoading) state.marketPricingLoading = {};
+  const pricing = state.marketPricing[ym];
+  if (!pricing && !state.marketPricingLoading[ym]) {
+    loadMarketPricingForCurrentMonth();
+  }
+
+  if (state.marketPricingLoading[ym] && !pricing) {
+    setPricingText('pricing-implied', 'loading');
+    setPricingText('pricing-contract', 'real data');
+    setPricingText('pricing-asof', '—');
+    setPricingText('pricing-price', '—');
+    if (outcomesEl) outcomesEl.innerHTML = '<div style="color:var(--text3);font-size:11px">Loading real pre-FOMC market pricing…</div>';
+    if (noteEl) noteEl.textContent = 'Fetching real sourced market-pricing row for this meeting.';
+    return;
+  }
+
+  if (!pricing || pricing.status !== 'ok') {
+    setPricingText('pricing-implied', 'unavailable');
+    setPricingText('pricing-contract', '—');
+    setPricingText('pricing-asof', '—');
+    setPricingText('pricing-price', '—');
+    if (outcomesEl) outcomesEl.innerHTML = '<div style="color:var(--text3);font-size:11px">No real sourced row for this meeting.</div>';
+    if (noteEl) noteEl.textContent = pricing && pricing.reason ? pricing.reason : 'No real market-pricing source available. The game will not invent probabilities.';
+    return;
+  }
+
+  const impliedBps = Number(pricing.market_implied_bps);
+  setPricingText('pricing-implied', fmtBpsSigned(impliedBps));
+  setPricingText('pricing-contract', pricing.contract || 'Fed funds futures / MP1');
+  setPricingText('pricing-asof', pricing.asof_date || pricing.meeting_date || ym);
+  const price = Number(pricing.price);
+  setPricingText('pricing-price', Number.isFinite(price) ? price.toFixed(4) : 'derived');
+
+  const outcomes = parsePricingOutcomes(pricing);
+  if (outcomesEl) {
+    if (!outcomes.length) {
+      outcomesEl.innerHTML = '<div style="color:var(--text3);font-size:11px">Implied move available; probability buckets unavailable.</div>';
+    } else {
+      outcomesEl.innerHTML = outcomes.map(o => {
+        const prob = Number(o.probability ?? o.prob ?? 0);
+        const bps = Number(o.bps ?? o.move_bps ?? 0);
+        const label = o.label || fmtBpsSigned(bps);
+        const width = clamp(prob, 3, 100);
+        return `<div class="pricing-outcome"><div class="pricing-outcome-name">${label.replace('_',' ')}</div><div class="pricing-bar-bg"><div class="pricing-bar-fill" style="width:${width}%"></div></div><div class="pricing-outcome-prob">${prob.toFixed(0)}%</div></div>`;
+      }).join('');
+    }
+  }
+
+  if (noteEl) {
+    const src = pricing.source || 'Real market-pricing dataset';
+    const q = pricing.quality || 'real sourced data';
+    const surprise = pricing.announcement_surprise_bps !== undefined && pricing.announcement_surprise_bps !== ''
+      ? ` Announcement surprise: ${fmtBpsSigned(Number(pricing.announcement_surprise_bps))}.` : '';
+    noteEl.textContent = `${q}: ${src}. Market-implied move is used as the reaction benchmark.${surprise}`;
+  }
+}
+
 
 // Get regime-appropriate IRF
 function getRegimeIrf() {
@@ -1991,11 +2504,16 @@ function applyPolicy() {
 
   // Log decision for pipeline comparison (every meeting month)
   if (isMeeting) {
+    const pricing = getCurrentPricing();
+    const marketBps = pricing && pricing.status === 'ok' && Number.isFinite(Number(pricing.market_implied_bps))
+      ? Math.round(Number(pricing.market_implied_bps)) : null;
     state.decisionLog.push({
       date:        rm.date,
       monthIdx:    state.monthIdx,
       playerBps:   Math.round(rateDelta * 100),
       realBps:     Math.round((rm.realDecision || 0) * 100),
+      marketBps:   marketBps,
+      marketSource: pricing && pricing.status === 'ok' ? (pricing.quality || 'real market data') : 'unavailable',
       playerRate:  newRate,
       realRate:    rm.fedFunds,
       bs:          state.bsPolicy,
@@ -2356,6 +2874,207 @@ function updateScore() {
   state.score += pts;
 }
 
+
+// ── GAMEPLAY UPGRADE: MISSIONS, CREDIBILITY, MARKETS, ADVISORS ────────────────
+function getMissionStatus() {
+  const p = state.player;
+  const era = state.era;
+  let title = 'DUAL MANDATE';
+  let body = 'Keep inflation near target while avoiding unemployment and recession.';
+  let progress = 50;
+
+  if (era === 'volcker') {
+    title = 'BREAK THE INFLATION PSYCHOLOGY';
+    progress = clamp(100 - Math.max(0, p.inflation - 3) * 10 - Math.max(0, p.unemployment - 8) * 4, 0, 100);
+    body = 'Primary objective: drive inflation below 4% without letting unemployment spiral above 10%.';
+  } else if (era === 'greenspan') {
+    title = 'SOFT LANDING MAESTRO';
+    progress = clamp(100 - Math.abs(p.inflation - 2.3) * 12 - Math.max(0, p.unemployment - 6) * 10 - Math.max(0, -p.yieldSpread) * 20, 0, 100);
+    body = 'Primary objective: preserve growth, avoid yield-curve inversion, and keep inflation anchored.';
+  } else if (era === 'bernanke') {
+    title = 'SAVE THE FINANCIAL SYSTEM';
+    progress = clamp(100 - Math.max(0, p.unemployment - 6) * 8 - Math.max(0, -p.growth) * 7 + (state.bsPolicy === 'qe' ? 8 : 0), 0, 100);
+    body = 'Primary objective: prevent depression dynamics. Liquidity tools matter as much as rate cuts.';
+  } else if (era === 'powell') {
+    title = 'ENGINEER THE SOFT LANDING';
+    progress = clamp(100 - Math.max(0, p.inflation - 3) * 10 - Math.max(0, p.unemployment - 5) * 12 - Math.max(0, -p.growth) * 8, 0, 100);
+    body = 'Primary objective: re-anchor inflation after the COVID shock without crushing labor demand.';
+  }
+  return { title, body, progress };
+}
+
+function updateCredibility(appliedRateDelta, taylorRate) {
+  const p = state.player;
+  const taylorGap = taylorRate - p.rate;
+  let delta = 0;
+
+  if (p.inflation > 4 && appliedRateDelta >= 0) delta += 1.4;
+  if (p.inflation > 5 && appliedRateDelta <= 0) delta -= 2.2;
+  if (p.inflation > 4 && state.tone === 'hawkish') delta += 0.8;
+  if (p.inflation > 4 && state.tone === 'dovish') delta -= 1.2;
+  if (Math.abs(taylorGap) < 1.0) delta += 0.6;
+  if (Math.abs(taylorGap) > 3.0) delta -= 1.0;
+  if (state.identity.erraticMoves > 0 && appliedRateDelta !== 0) delta -= 0.8;
+  if (p.inflation >= 1.5 && p.inflation <= 3 && p.unemployment <= 5.8 && p.growth > 0) delta += 0.9;
+  if (state.inRecession && appliedRateDelta > 0) delta -= 1.2;
+  if (state.inflationCrisisMonths > 6) delta -= 1.5;
+
+  state.credibility = clamp((state.credibility ?? 70) + delta, 0, 100);
+}
+
+function computeMarketReaction(appliedRateDelta, taylorRate) {
+  const p = state.player;
+  const pricing = getCurrentPricing();
+  const hasRealPricing = pricing && pricing.status === 'ok' && Number.isFinite(Number(pricing.market_implied_bps));
+  const marketMove = hasRealPricing ? Number(pricing.market_implied_bps) / 100 : (realMonth().realDecision || 0);
+  const referenceSource = hasRealPricing ? 'real pre-meeting ZQ futures pricing' : 'historical Fed decision fallback';
+  const surprise = appliedRateDelta - marketMove;
+  const highInf = p.inflation > 3.5;
+  const recessionRisk = state.inRecession || p.growth < -0.5 || p.yieldSpread < -0.2;
+  const credibility = state.credibility ?? 70;
+
+  let stocks = 0.15;
+  stocks -= surprise * 3.2;
+  if (appliedRateDelta < 0) stocks += 1.1;
+  if (highInf && appliedRateDelta <= 0) stocks -= 0.9;
+  if (recessionRisk && appliedRateDelta >= 0) stocks -= 1.2;
+  if (credibility < 35) stocks -= 0.8;
+
+  let y2 = appliedRateDelta * 85 + surprise * 45;
+  if (state.tone === 'hawkish') y2 += 12;
+  if (state.tone === 'dovish') y2 -= 12;
+  if (credibility < 40 && highInf) y2 += 15;
+
+  let dollar = appliedRateDelta * 1.7 + (state.tone === 'hawkish' ? 0.35 : state.tone === 'dovish' ? -0.35 : 0);
+  if (recessionRisk && appliedRateDelta > 0) dollar += 0.25;
+  if (credibility < 35) dollar -= 0.4;
+
+  let credit = 0.02 + Math.max(0, appliedRateDelta) * 0.35;
+  if (recessionRisk) credit += 0.18;
+  if (state.bsPolicy === 'qe') credit -= 0.12;
+  if (state.bsPolicy === 'qt') credit += 0.10;
+  if (credibility < 35) credit += 0.12;
+
+  stocks = clamp(stocks, -6, 6);
+  y2 = clamp(y2, -130, 160);
+  dollar = clamp(dollar, -3.5, 3.5);
+  credit = clamp(credit, -0.4, 1.2);
+
+  let narrative = 'Markets see a data-dependent Fed and price limited volatility.';
+  if (highInf && appliedRateDelta > 0) narrative = 'Credibility bid: rates sell off, dollar firms, inflation-fighting reputation improves.';
+  if (highInf && appliedRateDelta <= 0) narrative = 'Bond market tests the Fed: inflation credibility weakens and breakeven fear rises.';
+  if (recessionRisk && appliedRateDelta < 0) narrative = 'Relief rally: markets price a Fed put, but economists will watch inflation expectations.';
+  if (recessionRisk && appliedRateDelta > 0) narrative = 'Hard-landing scare: stocks fade as policy tightens into weak growth.';
+  if (state.bsPolicy === 'qe') narrative += ' QE cushions credit stress.';
+  if (state.bsPolicy === 'qt') narrative += ' QT adds liquidity pressure.';
+
+  narrative += ` Reference: ${referenceSource}; surprise ${fmtBpsSigned(surprise * 100)} vs priced move.`;
+  state.lastMarketReaction = { stocks, y2, dollar, credit, narrative, marketMove, surprise, referenceSource };
+  addEvent('market', 'MARKET REACTION', `Stocks ${stocks>=0?'+':''}${stocks.toFixed(1)}% · 2Y ${y2>=0?'+':''}${Math.round(y2)}bps · Dollar ${dollar>=0?'+':''}${dollar.toFixed(1)}% · Credit ${credit>=0?'+':''}${credit.toFixed(2)}pp · Surprise ${fmtBpsSigned(surprise*100)}`);
+}
+
+function renderMarketReaction() {
+  const r = state.lastMarketReaction;
+  const set = (id, text, good) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    el.style.color = good === null ? 'var(--text)' : good ? 'var(--green)' : 'var(--red)';
+  };
+  if (!r) {
+    set('react-stocks', '—', null); set('react-y2', '—', null); set('react-dollar', '—', null); set('react-credit', '—', null);
+    const note = document.getElementById('react-note'); if (note) note.textContent = 'Make a FOMC decision to see how markets price your credibility.';
+    return;
+  }
+  set('react-stocks', `${r.stocks>=0?'+':''}${r.stocks.toFixed(1)}%`, r.stocks >= 0);
+  set('react-y2', `${r.y2>=0?'+':''}${Math.round(r.y2)}bps`, r.y2 <= 0);
+  set('react-dollar', `${r.dollar>=0?'+':''}${r.dollar.toFixed(1)}%`, r.dollar >= 0);
+  set('react-credit', `${r.credit>=0?'+':''}${r.credit.toFixed(2)}pp`, r.credit <= 0);
+  const note = document.getElementById('react-note'); if (note) note.textContent = r.narrative;
+}
+
+function renderAdvisors() {
+  const p = state.player;
+  const tw = model.approvalWeights.taylor;
+  const taylorRate = clamp(tw.const + tw.inf_gap * (p.inflation - 2) + tw.unemp_gap * (p.unemployment - 5), 0, 22);
+  const gap = taylorRate - p.rate;
+  const highInf = p.inflation > 3.5;
+  const weakLabor = p.unemployment > 6 || p.growth < 0;
+  const inverted = p.yieldSpread < 0;
+
+  const hawk = highInf || gap > 1
+    ? `Inflation risk is not contained. Rule-implied rate is ${taylorRate.toFixed(2)}%. I prefer a hike or hawkish guidance.`
+    : `Inflation is closer to target. Keep optionality, but do not let expectations drift.`;
+  const dove = weakLabor
+    ? `Growth/labor stress is visible. A hike now risks recession; consider hold, cuts, or QE if stress deepens.`
+    : `Labor market can absorb caution, but avoid unnecessary unemployment.`;
+  const pricing = getCurrentPricing();
+  let desk = inverted
+    ? `Curve is inverted. Markets are pricing policy mistake risk; surprise hikes will hit equities and credit.`
+    : `Market pricing is stable. Clear communication matters more than a surprise.`;
+  if (pricing && pricing.status === 'ok') {
+    desk = `Real market pricing was ${fmtBpsSigned(pricing.market_implied_bps)} before this meeting. Biggest risk is a surprise versus that priced move.`;
+  } else if (realMonth().isMeeting === 1) {
+    desk = `Real market-pricing data is not loaded for this meeting. Do not assume the market expected the same move as the Fed.`;
+  }
+
+  const grid = document.getElementById('advisor-grid');
+  if (!grid) return;
+  grid.innerHTML = `
+    <div class="advisor-card"><div class="advisor-name">Hawkish Governor</div><div class="advisor-quote">${hawk}</div></div>
+    <div class="advisor-card"><div class="advisor-name">Dovish Governor</div><div class="advisor-quote">${dove}</div></div>
+    <div class="advisor-card"><div class="advisor-name">Market Desk</div><div class="advisor-quote">${desk}</div></div>
+  `;
+}
+
+function unlockAchievement(key, label, body) {
+  if (!state.achievements) state.achievements = [];
+  if (state.achievements.some(a => a.key === key)) return;
+  state.achievements.push({ key, label });
+  state.score += 4;
+  addEvent('info', `ACHIEVEMENT UNLOCKED: ${label}`, body || 'Legacy score bonus awarded.');
+}
+
+function checkAchievements() {
+  const p = state.player;
+  if (state.credibility >= 85) unlockAchievement('cred85', 'Credibility Anchor', 'Markets believe your reaction function.');
+  if (p.inflation >= 1.5 && p.inflation <= 2.8 && p.unemployment <= 5.5 && p.growth > 0 && state.monthIdx > 12) unlockAchievement('softlanding', 'Soft Landing Watch', 'Inflation near target, growth positive, unemployment contained.');
+  if (state.inRecession && state.bsPolicy === 'qe') unlockAchievement('liquidity', 'Lender of Last Resort', 'Used balance sheet tools during recession stress.');
+  if (state.inflationCrisisMonths >= 6 && state.identity.hikes >= 3) unlockAchievement('inflationfighter', 'Inflation Fighter', 'Sustained tightening during an inflation crisis.');
+  if ((state.identity.erraticMoves || 0) >= 3) unlockAchievement('whipsaw', 'Whipsaw Warning', 'Frequent reversals make markets doubt the reaction function.');
+}
+
+function renderMissionAndCredibility() {
+  const m = getMissionStatus();
+  const title = document.getElementById('mission-title');
+  const body = document.getElementById('mission-body');
+  const fill = document.getElementById('mission-fill');
+  if (title) title.textContent = m.title;
+  if (body) body.textContent = m.body + ` Progress: ${Math.round(m.progress)}%.`;
+  if (fill) {
+    fill.style.width = Math.round(m.progress) + '%';
+    fill.style.background = m.progress > 65 ? 'var(--green)' : m.progress > 35 ? 'var(--yellow)' : 'var(--red)';
+  }
+  const cred = Math.round(state.credibility ?? 70);
+  const pill = document.getElementById('credibility-pill');
+  if (pill) {
+    pill.textContent = `CRED ${cred}`;
+    pill.style.color = cred > 65 ? 'var(--green)' : cred > 35 ? 'var(--yellow)' : 'var(--red)';
+    pill.style.borderColor = cred > 65 ? 'var(--green)' : cred > 35 ? '#5a4a18' : 'var(--red)';
+  }
+}
+
+function renderAchievements() {
+  const el = document.getElementById('achievement-list');
+  if (!el) return;
+  const list = state.achievements || [];
+  if (!list.length) {
+    el.innerHTML = '<span class="achievement-empty">No achievements yet.</span>';
+    return;
+  }
+  el.innerHTML = list.map(a => `<span class="achievement-badge">${a.label}</span>`).join('');
+}
+
 // ── REACTION COMMENTS AFTER DECISIONS ────────────────────────────────────────
 const COMMENTS = {
   whitehouse: {
@@ -2475,6 +3194,11 @@ function nextMonth() {
   const appliedRateDelta = state.pendingRateDelta;
   applyPolicy();
   const taylorRate = updateApprovals(appliedRateDelta);
+  updateCredibility(appliedRateDelta, taylorRate);
+  if (eraData[state.monthIdx] && eraData[state.monthIdx].isMeeting === 1) {
+    safeReactionStep('market reaction', () => computeMarketReaction(appliedRateDelta, taylorRate));
+  }
+  checkAchievements();
   updateFedApprovals();
   updateScore();
   state.fedScore += computeFedScore();
@@ -2503,6 +3227,19 @@ function nextMonth() {
   h.p_growth.push(+state.player.growth.toFixed(2));
   h.p_rate.push(+state.player.rate.toFixed(2));
   h.p_spread.push(+state.player.yieldSpread.toFixed(2));
+  const totalApprovalForHistory = Math.round((state.approval.markets + state.approval.congress + state.approval.public + state.approval.econ) / 4);
+  h.credibility = h.credibility || [];
+  h.approval = h.approval || [];
+  h.score = h.score || [];
+  h.market_rate = h.market_rate || [];
+  h.credibility.push(Math.round(state.credibility || 70));
+  h.approval.push(totalApprovalForHistory);
+  h.score.push(state.score || 0);
+  const lastDecisionForHistory = state.decisionLog && state.decisionLog.length ? state.decisionLog[state.decisionLog.length - 1] : null;
+  const marketRateForHistory = lastDecisionForHistory && lastDecisionForHistory.monthIdx === state.monthIdx && Number.isFinite(Number(lastDecisionForHistory.marketBps))
+    ? +(Number(lastDecisionForHistory.realRate) - Number(lastDecisionForHistory.realBps) / 100 + Number(lastDecisionForHistory.marketBps) / 100).toFixed(2)
+    : null;
+  h.market_rate.push(marketRateForHistory);
 
   // Always reset pending delta after advancing (non-meeting months carry-over fix)
   state.lastAppliedDelta = appliedRateDelta;  // keep for projection display
@@ -2527,6 +3264,15 @@ function changeRate(delta, btn) {
   state.pendingRateDelta = delta;
   document.querySelectorAll('.rate-btn').forEach(b => b.classList.remove('selected-rate'));
   btn.classList.add('selected-rate');
+  renderMissionAndCredibility();
+  renderMarketPricing();
+  loadMarketPricingForCurrentMonth();
+  renderAdvisors();
+  renderMarketReaction();
+  renderAchievements();
+  updateCommandCenter();
+  updateCreativeCharts();
+
   updateRateDisplay();
   updateEffectPreview();
 }
@@ -2665,11 +3411,14 @@ function renderAll() {
       // Rate comparison
       const pRate = fmtBps(e.playerBps);
       const rRate = fmtBps(e.realBps);
-      const agree = e.playerBps === e.realBps
-        ? `<span style="color:var(--text3);font-size:10px">✓ matched</span>`
-        : (Math.sign(e.playerBps || 0) === Math.sign(e.realBps || 0) || (e.playerBps === 0 && e.realBps === 0))
-          ? `<span style="color:var(--yellow);font-size:10px">~ direction ok</span>`
-          : `<span style="color:var(--red);font-size:10px">✗ diverged</span>`;
+      const mRate = e.marketBps === null || e.marketBps === undefined
+        ? `<span style="color:var(--text3)">MKT n/a</span>` : fmtBps(e.marketBps);
+      const compareBps = e.marketBps === null || e.marketBps === undefined ? e.realBps : e.marketBps;
+      const agree = e.playerBps === compareBps
+        ? `<span style="color:var(--text3);font-size:10px">✓ priced</span>`
+        : Math.abs((e.playerBps || 0) - (compareBps || 0)) <= 25
+          ? `<span style="color:var(--yellow);font-size:10px">~ close</span>`
+          : `<span style="color:var(--red);font-size:10px">surprise</span>`;
 
       // Balance sheet + tone badges
       const bsBadge = e.bs === 'qe'
@@ -2778,11 +3527,19 @@ function renderAll() {
   document.getElementById('scorecard-body').innerHTML = [
     scRow('Score/mo', avgPScore, avgFScore, true),
     scRow('Approval', totalPAp+'%', totalFAp+'%', true),
+    scRow('Credibility', Math.round(state.credibility || 70)+'%', '—', null),
     scRow('Inflation', state.player.inflation.toFixed(1)+'%', rm2.inflation.toFixed(1)+'%', false),
     scRow('Unemploy', state.player.unemployment.toFixed(1)+'%', rm2.unemployment.toFixed(1)+'%', false),
     scRow('Growth', state.player.growth.toFixed(1)+'%', (rm2.growth||2).toFixed(1)+'%', true),
     scRow('Rate', state.player.rate.toFixed(2)+'%', rm2.fedFunds.toFixed(2)+'%', null),
   ].join('');
+
+  renderMissionAndCredibility();
+  renderMarketPricing();
+  loadMarketPricingForCurrentMonth();
+  renderAdvisors();
+  renderMarketReaction();
+  renderAchievements();
 
   updateRateDisplay();
   updateEffectPreview();
@@ -2807,6 +3564,129 @@ function setApBar(key, val, color) {
   document.getElementById('ap-' + key).style.width = Math.round(val) + '%';
   document.getElementById('ap-' + key).style.background = color;
   document.getElementById('ap-' + key + '-n').textContent = Math.round(val);
+}
+
+
+
+// ── CREATIVE UI / CHART STUDIO ───────────────────────────────────────────────
+function setChartDeck(deck) {
+  const cp = document.getElementById('center-panel');
+  if (!cp) return;
+  ['macro','market','player','audit'].forEach(d => {
+    cp.classList.toggle('deck-' + d, d === deck);
+    const btn = document.getElementById('tab-' + d);
+    if (btn) btn.classList.toggle('active', d === deck);
+  });
+  setTimeout(() => { Object.values(charts || {}).forEach(c => { try { c.resize(); c.update('none'); } catch(e) {} }); }, 40);
+}
+
+function buildMarketOutcomeRows() {
+  const pricing = getCurrentPricing();
+  const outcomes = parsePricingOutcomes(pricing);
+  if (pricing && pricing.status === 'ok' && outcomes.length) {
+    return outcomes.map(o => ({
+      label: (o.label || fmtBpsSigned(Number(o.bps ?? o.move_bps ?? 0))).replace('_',' '),
+      probability: Number(o.probability ?? o.prob ?? 0)
+    })).filter(x => Number.isFinite(x.probability));
+  }
+  return [
+    { label:'No real row', probability:0 },
+    { label:'Available', probability:0 },
+    { label:'For this', probability:0 },
+    { label:'meeting', probability:0 },
+  ];
+}
+
+function updateCommandCenter() {
+  if (!state || !eraData || state.monthIdx === undefined) return;
+  const rm = realMonth();
+  const pricing = getCurrentPricing();
+  const isMeeting = rm && rm.isMeeting === 1;
+  const realBps = Math.round((rm.realDecision || 0) * 100);
+  const playerBps = Math.round((state.pendingRateDelta || 0) * 100);
+  const marketBps = pricing && pricing.status === 'ok' && Number.isFinite(Number(pricing.market_implied_bps)) ? Math.round(Number(pricing.market_implied_bps)) : null;
+  const surprise = marketBps === null ? null : playerBps - marketBps;
+  const fedSurprise = marketBps === null ? null : realBps - marketBps;
+  const headline = document.getElementById('cockpit-headline');
+  const subtitle = document.getElementById('cockpit-subtitle');
+  if (headline) headline.textContent = isMeeting ? 'FOMC meeting: decide against the market, not just history.' : 'Inter-meeting month: watch lags, credibility, and risk buildup.';
+  if (subtitle) subtitle.textContent = isMeeting
+    ? 'The market-pricing bar shows what was priced before the historical decision. Your surprise drives immediate market reaction.'
+    : 'No policy vote this month. The charts show how earlier decisions transmit with lag into macro conditions.';
+  const tile = (lbl,val,note,cls='') => `<div class="decision-tile"><div class="decision-tile-lbl">${lbl}</div><div class="decision-tile-val ${cls}">${val}</div><div class="decision-tile-note">${note}</div></div>`;
+  const snap = document.getElementById('decision-snapshot');
+  if (snap) {
+    snap.innerHTML = [
+      tile('Market', marketBps === null ? 'N/A' : fmtBpsSigned(marketBps), marketBps === null ? 'no real priced row' : 'real sourced pricing', 'sc-fed'),
+      tile('You', fmtBpsSigned(playerBps), isMeeting ? 'pending decision' : 'no FOMC vote', 'sc-you'),
+      tile('Real Fed', fmtBpsSigned(realBps), isMeeting ? 'historical action' : 'no meeting move', 'sc-fed'),
+      tile('Surprise', surprise === null ? 'N/A' : fmtBpsSigned(surprise), surprise === null ? 'market benchmark missing' : (surprise > 0 ? 'hawkish vs market' : surprise < 0 ? 'dovish vs market' : 'in line with market'), surprise === null ? '' : (surprise > 0 ? 'chg-bad' : surprise < 0 ? 'chg-good' : '')),
+    ].join('');
+  }
+  const strip = document.getElementById('surprise-strip');
+  if (strip) {
+    strip.innerHTML = isMeeting
+      ? `Real Fed surprise: <b>${fedSurprise === null ? 'N/A' : fmtBpsSigned(fedSurprise)}</b>. Your pending surprise: <b>${surprise === null ? 'N/A' : fmtBpsSigned(surprise)}</b>. Market reaction is calibrated off this surprise gap.`
+      : 'Next FOMC month will reveal market pricing if a real sourced row exists. Non-meeting months continue policy transmission.';
+  }
+  const note = document.getElementById('market-dist-note');
+  if (note) note.textContent = pricing && pricing.status === 'ok'
+    ? `${pricing.quality || 'Real sourced data'} · ${pricing.source || 'market-pricing CSV'}`
+    : isMeeting ? 'No real sourced market-pricing row for this meeting.' : 'Market distribution is shown on FOMC meeting months.';
+  renderDecisionLedger();
+}
+
+function renderDecisionLedger() {
+  const el = document.getElementById('decision-ledger');
+  if (!el) return;
+  const log = (state.decisionLog || []).slice().reverse();
+  if (!log.length) {
+    el.innerHTML = '<div style="padding:10px;color:var(--text3);font-size:12px;">No FOMC decisions yet.</div>';
+    return;
+  }
+  const rows = log.map(e => {
+    const mkt = e.marketBps === null || e.marketBps === undefined ? 'N/A' : fmtBpsSigned(e.marketBps);
+    const youSurp = e.marketBps === null || e.marketBps === undefined ? 'N/A' : fmtBpsSigned(e.playerBps - e.marketBps);
+    const fedSurp = e.marketBps === null || e.marketBps === undefined ? 'N/A' : fmtBpsSigned(e.realBps - e.marketBps);
+    return `<tr><td>${formatDate(e.date)}</td><td class="sc-fed">${mkt}</td><td class="sc-you">${fmtBpsSigned(e.playerBps)}</td><td>${fmtBpsSigned(e.realBps)}</td><td>${youSurp}</td><td>${fedSurp}</td><td>${e.marketSource || '—'}</td></tr>`;
+  }).join('');
+  el.innerHTML = `<table class="ledger-table"><thead><tr><th>Date</th><th>Market</th><th>You</th><th>Fed</th><th>Your surprise</th><th>Fed surprise</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function updateCreativeCharts() {
+  if (!charts || !state || !state.history) return;
+  updateCommandCenter();
+  const h = state.history;
+  const dist = charts['chart-market-dist'];
+  if (dist) {
+    const rows = buildMarketOutcomeRows();
+    dist.data.labels = rows.map(r => r.label);
+    dist.data.datasets[0].data = rows.map(r => +r.probability.toFixed(1));
+    dist.update('none');
+  }
+  const ratePath = charts['chart-rate-path'];
+  if (ratePath) {
+    ratePath.data.labels = [...h.labels];
+    ratePath.data.datasets[0].data = [...h.real_rate];
+    ratePath.data.datasets[1].data = [...h.p_rate];
+    ratePath.data.datasets[2].data = [...(h.market_rate || [])];
+    ratePath.update('none');
+  }
+  const surprise = charts['chart-surprise'];
+  if (surprise) {
+    const log = (state.decisionLog || []).slice(-12);
+    surprise.data.labels = log.map(e => formatDate(e.date));
+    surprise.data.datasets[0].data = log.map(e => e.marketBps === null || e.marketBps === undefined ? null : e.playerBps - e.marketBps);
+    surprise.data.datasets[1].data = log.map(e => e.marketBps === null || e.marketBps === undefined ? null : e.realBps - e.marketBps);
+    surprise.update('none');
+  }
+  const cred = charts['chart-credibility'];
+  if (cred) {
+    cred.data.labels = [...h.labels];
+    cred.data.datasets[0].data = [...(h.credibility || [])];
+    cred.data.datasets[1].data = [...(h.approval || [])];
+    cred.update('none');
+  }
 }
 
 // ── CHARTS (5 stacked) ─────────────────────────────────────────────────────────
@@ -2861,6 +3741,50 @@ function initAllCharts() {
       options: makeChartOptions(def.unit, def.annotations)
     });
   }
+
+  const distCtx = document.getElementById('chart-market-dist');
+  if (distCtx) {
+    charts['chart-market-dist'] = new Chart(distCtx, {
+      type:'bar',
+      data:{ labels:[], datasets:[{ label:'Probability', data:[], borderWidth:1, backgroundColor:'rgba(74,159,255,0.35)', borderColor:'#4a9fff' }] },
+      options:{ responsive:true, maintainAspectRatio:false, animation:{duration:120}, plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx => `${ctx.raw}%`}} }, scales:{ x:{ticks:{color:'#777',font:{size:10,family:'Courier New'}},grid:{display:false}}, y:{beginAtZero:true,max:100,ticks:{color:'#777',callback:v=>v+'%'},grid:{color:'#1e1e1e'}} } }
+    });
+  }
+  const rpCtx = document.getElementById('chart-rate-path');
+  if (rpCtx) {
+    charts['chart-rate-path'] = new Chart(rpCtx, {
+      type:'line',
+      data:{ labels:[...h.labels], datasets:[
+        { label:'Real Fed', data:[...h.real_rate], borderColor:'#3a7fcc', backgroundColor:'transparent', borderWidth:1.7, pointRadius:0, tension:.25 },
+        { label:'You', data:[...h.p_rate], borderColor:'#e09a20', backgroundColor:'transparent', borderWidth:1.7, pointRadius:0, tension:.25, borderDash:[4,3] },
+        { label:'Market priced', data:[...(h.market_rate || [])], borderColor:'#4a9fff', backgroundColor:'transparent', borderWidth:0, pointRadius:3, showLine:false, spanGaps:false },
+      ]},
+      options: makeChartOptions('%', [])
+    });
+  }
+  const spCtx = document.getElementById('chart-surprise');
+  if (spCtx) {
+    charts['chart-surprise'] = new Chart(spCtx, {
+      type:'bar',
+      data:{ labels:[], datasets:[
+        { label:'Your surprise', data:[], backgroundColor:'rgba(224,154,32,.35)', borderColor:'#e09a20', borderWidth:1 },
+        { label:'Real Fed surprise', data:[], backgroundColor:'rgba(58,127,204,.35)', borderColor:'#3a7fcc', borderWidth:1 },
+      ]},
+      options:{ responsive:true, maintainAspectRatio:false, animation:{duration:120}, plugins:{ legend:{labels:{color:'#aaa',font:{size:11,family:'Courier New'}}} }, scales:{ x:{ticks:{color:'#777',font:{size:10,family:'Courier New'}},grid:{color:'#1e1e1e'}}, y:{ticks:{color:'#777',callback:v=>v+'bps'},grid:{color:'#1e1e1e'}} } }
+    });
+  }
+  const crCtx = document.getElementById('chart-credibility');
+  if (crCtx) {
+    charts['chart-credibility'] = new Chart(crCtx, {
+      type:'line',
+      data:{ labels:[...h.labels], datasets:[
+        { label:'Credibility', data:[...(h.credibility || [])], borderColor:'#aa78ff', backgroundColor:'transparent', borderWidth:1.7, pointRadius:0, tension:.25 },
+        { label:'Approval', data:[...(h.approval || [])], borderColor:'#e09a20', backgroundColor:'transparent', borderWidth:1.3, pointRadius:0, tension:.25, borderDash:[3,3] },
+      ]},
+      options:{ responsive:true, maintainAspectRatio:false, animation:{duration:120}, plugins:{ legend:{labels:{color:'#aaa',font:{size:11,family:'Courier New'}}} }, scales:{ x:{ticks:{color:'#777',font:{size:10,family:'Courier New'},maxTicksLimit:7},grid:{color:'#1e1e1e'}}, y:{min:0,max:100,ticks:{color:'#777',callback:v=>v+'%'},grid:{color:'#1e1e1e'}} } }
+    });
+  }
+  updateCreativeCharts();
 }
 
 function updateAllCharts() {
@@ -2873,6 +3797,7 @@ function updateAllCharts() {
     c.data.datasets[1].data = [...h[def.pKey]];
     c.update('none');
   }
+  updateCreativeCharts();
 }
 
 // ── END GAME ───────────────────────────────────────────────────────────────────
@@ -2936,6 +3861,7 @@ function endGame() {
         ${youBeatFed ? '🏆 YOU OUTPERFORMED THE REAL FED' : '📉 THE REAL FED OUTPERFORMED YOU'}
       </div>
       <div style="font-size:13px;color:var(--text3)">Approval: You <span style="color:var(--player);font-weight:700">${yourTotalAp}%</span> · Real Fed <span style="color:var(--real);font-weight:700">${fedTotalAp}%</span></div>
+      <div class="final-extra">Credibility <span style="font-weight:700;color:var(--yellow)">${Math.round(state.credibility || 70)}</span>/100 · Achievements <span style="font-weight:700;color:var(--purple)">${(state.achievements||[]).length}</span> · Style <span style="font-weight:700;color:var(--text)">${computeIdentity().title}</span></div>
     `;
   }
 
@@ -2976,7 +3902,7 @@ function resetGame() {
   document.getElementById('start-btn').textContent = 'SELECT AN ERA TO BEGIN';
   document.getElementById('recession-banner').style.display = 'none';
   document.getElementById('inflation-crisis-banner').style.display = 'none';
-  document.getElementById('event-feed').innerHTML = '<div class="event-item info"><div class="event-title">YOUR TERM BEGINS</div><div class="event-body">Inherit the economy. Decisions constrained to FOMC meeting months only.</div></div>';
+  document.getElementById('event-feed').innerHTML = '<div class="event-item info"><div class="event-title">YOUR TERM BEGINS</div><div class="event-body">Inherit the economy. Manage rates, balance sheet, credibility, market reactions, and crisis choices.</div></div>';
   showScreen('title-screen');
 }
 
