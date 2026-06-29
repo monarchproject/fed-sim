@@ -124,3 +124,16 @@ This is a real sourced reconstruction, not a licensed CME FedWatch archive. If a
 - Macro charts are reduced and placed in a two-column chart grid.
 - Right-side panels are wrapped into compact cards to reduce scrolling.
 - Render start command remains: `python -m gunicorn main:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1`.
+
+## Latest cockpit fixes
+
+- Market-pricing no longer goes blank for older Volcker/Greenspan meetings.
+- When a real sourced Fed funds futures / SF Fed USMPD row exists, the app uses it.
+- When a futures row does not exist, the app shows a clearly labeled **real-data proxy** based on FRED-derived monthly FEDFUNDS and 2Y Treasury repricing. This is not presented as a full historical FedWatch archive.
+- The right intelligence panel now uses the empty space below Taylor Rule by allowing scorecard, approvals, achievements, and event log cards to fill the second column instead of forcing extra scrolling.
+
+Render start command:
+
+```text
+python -m gunicorn main:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1
+```

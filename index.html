@@ -738,6 +738,23 @@
     .side-card-achievements,
     .side-card-event-log { grid-column: 1 / -1; }
     .side-card-event-log #event-feed { max-height: 145px; overflow-y: auto; padding-right: 2px; }
+
+
+    /* Space-use pass: stop lower cards from full-width blocking the grid.
+       This lets approval/score/event cards fill the empty space below Taylor Rule
+       instead of forcing the right panel to scroll. */
+    .right-panel { grid-auto-flow: dense; }
+    .side-card-fomc-advisors { grid-row: auto; }
+    .side-card-approval-ratings-you-vs-real-fed,
+    .side-card-scorecard-vs-real-fed,
+    .side-card-achievements,
+    .side-card-event-log { grid-column: auto; }
+    .side-card-active-policy-pipeline { grid-row: span 3; }
+    #pipeline-box { max-height: 240px; overflow-y: auto; padding-right: 4px; }
+    .side-card-approval-ratings-you-vs-real-fed #dual-approvals { max-height: 160px; overflow-y: auto; padding-right: 3px; }
+    .side-card-scorecard-vs-real-fed #scorecard-box { max-height: 170px; overflow-y: auto; }
+    .side-card-event-log #event-feed { max-height: 180px; overflow-y: auto; padding-right: 2px; }
+
   }
 
   @media (min-width: 1600px) {
@@ -948,7 +965,7 @@
 <div class="cockpit-card">
 <div class="cockpit-card-title">Market priced before decision</div>
 <div class="cockpit-chart"><canvas id="chart-market-dist"></canvas></div>
-<div class="chart-mini-note" id="market-dist-note">Real sourced probability buckets appear on FOMC months.</div>
+<div class="chart-mini-note" id="market-dist-note">Futures buckets when available; real FRED proxy for older eras.</div>
 </div>
 <div class="cockpit-card">
 <div class="cockpit-card-title">Decision readout</div>
@@ -991,7 +1008,7 @@
 <div class="chart-deck" id="chart-deck-audit">
 <div class="audit-grid">
 <div class="audit-card"><div class="audit-title"><span class="source-pill source-real">Real data</span> Macro</div><div class="audit-body">CPI, unemployment, GDP/activity, Fed funds, and Treasury series come from the bundled official macro dataset built from FRED sources.</div></div>
-<div class="audit-card"><div class="audit-title"><span class="source-pill source-mkt">Real market</span> Pricing</div><div class="audit-body">Pre-FOMC market-implied moves use the included real sourced market-pricing CSV. Missing rows stay unavailable instead of being invented.</div></div>
+<div class="audit-card"><div class="audit-title"><span class="source-pill source-mkt">Real market</span> Pricing</div><div class="audit-body">Pre-FOMC market-implied moves use the included real sourced market-pricing CSV where available. Older meetings use a clearly labeled FRED 2Y/FEDFUNDS proxy rather than leaving the cockpit blank.</div></div>
 <div class="audit-card"><div class="audit-title"><span class="source-pill source-sim">Simulation</span> Player path</div><div class="audit-body">Your alternate inflation, unemployment, growth, approval, and credibility paths are model/game outputs driven by policy choices and shocks.</div></div>
 <div class="audit-card"><div class="audit-title"><span class="source-pill source-model">Model</span> Transmission</div><div class="audit-body">Policy effects are lagged through the app's regime/IRF logic. Reactions use surprise versus market-implied pricing.</div></div>
 </div>
@@ -1057,7 +1074,7 @@
 <div class="pricing-cell"><div class="pricing-lbl">Price</div><div class="pricing-val" id="pricing-price">—</div></div>
 </div>
 <div id="pricing-outcomes"></div>
-<div class="pricing-note" id="pricing-note">Real ZQ futures pricing loads on FOMC months. No fake fallback is used.</div>
+<div class="pricing-note" id="pricing-note">Fed funds futures rows load when available. Older eras use a real FRED 2Y/FEDFUNDS proxy, clearly labeled.</div>
 </div>
 </div>
 <div class="side-card side-card-market-reaction"><div class="section-label">Market Reaction</div>
@@ -2515,8 +2532,8 @@ function renderMarketPricing() {
     setPricingText('pricing-contract', '—');
     setPricingText('pricing-asof', '—');
     setPricingText('pricing-price', '—');
-    if (outcomesEl) outcomesEl.innerHTML = '<div style="color:var(--text3);font-size:11px">No real sourced row for this meeting.</div>';
-    if (noteEl) noteEl.textContent = pricing && pricing.reason ? pricing.reason : 'No real market-pricing source available. The game will not invent probabilities.';
+    if (outcomesEl) outcomesEl.innerHTML = '<div style="color:var(--text3);font-size:11px">No sourced futures row for this meeting.</div>';
+    if (noteEl) noteEl.textContent = pricing && pricing.reason ? pricing.reason : 'No direct futures row available. Older meetings use a real FRED 2Y/FEDFUNDS proxy when possible.';
     return;
   }
 
@@ -3103,7 +3120,10 @@ function computeMarketReaction(appliedRateDelta, taylorRate) {
   const pricing = getCurrentPricing();
   const hasRealPricing = pricing && pricing.status === 'ok' && Number.isFinite(Number(pricing.market_implied_bps));
   const marketMove = hasRealPricing ? Number(pricing.market_implied_bps) / 100 : (realMonth().realDecision || 0);
-  const referenceSource = hasRealPricing ? 'real pre-meeting ZQ futures pricing' : 'historical Fed decision fallback';
+  const pricingQuality = (pricing && pricing.quality) ? String(pricing.quality) : '';
+  const referenceSource = hasRealPricing
+    ? (pricingQuality.includes('proxy') ? 'real FRED 2Y/FEDFUNDS proxy' : 'real pre-meeting Fed funds futures pricing')
+    : 'historical Fed decision fallback';
   const surprise = appliedRateDelta - marketMove;
   const highInf = p.inflation > 3.5;
   const recessionRisk = state.inRecession || p.growth < -0.5 || p.yieldSpread < -0.2;

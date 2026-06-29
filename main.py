@@ -664,6 +664,77 @@ def _manual_market_pricing_lookup(era_name, ym):
         return None
 
 
+
+def _historical_rate_path_pricing_proxy(era_name, ym, reason=None):
+    """Real-data fallback for meetings without sourced Fed Funds futures rows.
+
+    This is NOT labelled as a full FedWatch/ZQ probability archive. It uses the
+    bundled official macro panel (FRED-derived monthly FEDFUNDS and 2Y Treasury)
+    to build a historically grounded proxy so older Volcker/Greenspan meetings
+    do not appear blank. The 2Y yield move captures market policy repricing;
+    FEDFUNDS supplies the actual historical policy path.
+    """
+    try:
+        panel, _ = load_or_build()
+        month = pd.Timestamp(f"{ym}-01")
+        if month not in panel.index:
+            return {"status": "unavailable", "ym": ym, "reason": reason or "No real macro row available for proxy market pricing."}
+        loc = panel.index.get_loc(month)
+        if isinstance(loc, slice):
+            loc = loc.start
+        row = panel.iloc[int(loc)]
+        prev = panel.iloc[max(int(loc) - 1, 0)]
+
+        actual_move_bps = None
+        if pd.notna(row.get("realDecision", np.nan)):
+            actual_move_bps = float(row.get("realDecision")) * 100.0
+        else:
+            actual_move_bps = (float(row.get("fedFunds")) - float(prev.get("fedFunds"))) * 100.0
+
+        y2_move_bps = None
+        try:
+            if pd.notna(row.get("y2", np.nan)) and pd.notna(prev.get("y2", np.nan)):
+                y2_move_bps = (float(row.get("y2")) - float(prev.get("y2"))) * 100.0
+        except Exception:
+            y2_move_bps = None
+
+        # Prefer the real 2Y Treasury repricing as a market proxy; anchor lightly
+        # to the real FEDFUNDS monthly change when the yield data are noisy/missing.
+        if y2_move_bps is not None and math.isfinite(y2_move_bps):
+            implied_bps = 0.75 * y2_move_bps + 0.25 * actual_move_bps
+            source_detail = "FRED 2Y Treasury monthly repricing + FRED FEDFUNDS monthly path"
+        else:
+            implied_bps = actual_move_bps
+            source_detail = "FRED FEDFUNDS monthly path only"
+
+        implied_bps = max(-150.0, min(150.0, float(implied_bps)))
+        pre_rate = float(prev.get("fedFunds")) if pd.notna(prev.get("fedFunds", np.nan)) else float(row.get("fedFunds"))
+        expected_post_rate = pre_rate + implied_bps / 100.0
+        meeting_date = FOMC_EXACT_DATES.get(ym) or f"{ym}-15"
+        asof = (month - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+
+        return {
+            "status": "ok",
+            "quality": "real_rate_path_proxy_not_futures",
+            "ym": ym,
+            "meeting_date": meeting_date,
+            "asof_date": asof,
+            "source": source_detail,
+            "contract": "2Y/FEDFUNDS proxy",
+            "price": None,
+            "implied_avg_rate": round(expected_post_rate, 4),
+            "pre_meeting_rate": round(pre_rate, 4),
+            "expected_post_rate": round(expected_post_rate, 4),
+            "market_implied_bps": round(implied_bps, 1),
+            "actual_move_bps": round(actual_move_bps, 1),
+            "announcement_surprise_bps": round(actual_move_bps - implied_bps, 1),
+            "outcomes": _probabilities_from_implied_move(implied_bps),
+            "calc_note": "Proxy estimate from real FRED monthly data. Use this where true pre-FOMC ZQ/FedWatch history is unavailable.",
+            "reason": reason or "No exact sourced Fed Funds futures row; showing a real-data proxy instead of a blank panel.",
+        }
+    except Exception as e:
+        return {"status": "unavailable", "ym": ym, "reason": reason or f"Proxy pricing failed: {e}"}
+
 def compute_real_market_pricing(era_name, ym):
     """Real-data only market pricing before an FOMC decision.
 
@@ -681,13 +752,18 @@ def compute_real_market_pricing(era_name, ym):
 
     meeting_date = FOMC_EXACT_DATES.get(ym)
     if not meeting_date:
-        result = {"status": "unavailable", "ym": ym, "reason": "Exact FOMC date not mapped for this month. Add fed_funds_futures_pricing.csv for this era."}
+        result = _historical_rate_path_pricing_proxy(
+            era_name, ym,
+            "Exact FOMC date not mapped; using real FRED monthly 2Y/FEDFUNDS proxy."
+        )
         cache[key] = result; _market_cache_save(cache); return result
 
     md = pd.Timestamp(meeting_date)
     if md < pd.Timestamp("2008-01-01"):
-        result = {"status": "unavailable", "ym": ym, "meeting_date": meeting_date,
-                  "reason": "Free public ZQ contract history is not reliable for this older era. Add licensed real data CSV for older meetings."}
+        result = _historical_rate_path_pricing_proxy(
+            era_name, ym,
+            "Pre-2008 public ZQ/FedWatch-style history is sparse; using real FRED monthly 2Y/FEDFUNDS proxy."
+        )
         cache[key] = result; _market_cache_save(cache); return result
 
     try:
@@ -738,7 +814,10 @@ def compute_real_market_pricing(era_name, ym):
             "calc_note": calc_note,
         }
     except Exception as e:
-        result = {"status": "unavailable", "ym": ym, "meeting_date": meeting_date, "reason": str(e)}
+        result = _historical_rate_path_pricing_proxy(
+            era_name, ym,
+            f"Direct futures fetch failed ({e}); using real FRED monthly 2Y/FEDFUNDS proxy."
+        )
     cache[key] = result
     _market_cache_save(cache)
     return result
