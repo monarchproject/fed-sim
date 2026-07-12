@@ -281,11 +281,16 @@ def build_macro_panel():
     ff = raw["FEDFUNDS"].resample("MS").mean().reindex(idx, method="ffill")
     panel["fedFunds"] = ff["FEDFUNDS"]
 
-    # STEP 1: rename IP-based growth proxy → "growth"
+    # STEP 1: growth proxy. A raw 1-month annualized log-diff (x12) amplifies a
+    # single noisy monthly print into swings of -170%/+76%, which is not usable
+    # as a headline "growth" number and contaminates every downstream regression
+    # (VAR, FCI, Okun) that reads indpro_m. Use a 6-month annualized rate instead:
+    # far less noisy (std ~5.5 vs ~11.7, avg month-to-month move ~1.4 vs ~8.1
+    # points) while remaining meaningfully more responsive than 12-month YoY.
     ip = raw["INDPRO"].resample("MS").last().reindex(idx, method="ffill")
     panel["ip"] = ip["INDPRO"]
     panel["growth_yoy"] = 100 * (panel["ip"] / panel["ip"].shift(12) - 1)
-    panel["indpro_m"] = 1200 * np.log(panel["ip"] / panel["ip"].shift(1))
+    panel["indpro_m"] = 200 * np.log(panel["ip"] / panel["ip"].shift(6))
 
     # GDP quarterly (kept for reference but not primary)
     if "GDPC1" in raw:
@@ -539,6 +544,21 @@ def estimate_fci_weights(panel):
     beta_y2     = -_finite_or_raise(coeffs[1], "fci y2")
     beta_spread = -_finite_or_raise(coeffs[2], "fci spread")
     beta_dollar = -_finite_or_raise(coeffs[3], "fci dollar")
+    # Sign guard: higher short rates and a stronger dollar should tighten the FCI
+    # (beta_y2, beta_dollar >= 0); a widening/positive curve should ease it and an
+    # inversion should tighten it (beta_spread <= 0). A single-equation OLS over a
+    # long, regime-mixed sample can pick up the wrong sign here just as it can for
+    # the Taylor-rule coefficients above; guard against that instead of silently
+    # shipping a backwards financial-conditions channel.
+    if beta_y2 < 0:
+        beta_y2 = abs(beta_y2)
+        print("  FCI weights: y2 sign flipped (was negative)")
+    if beta_spread > 0:
+        beta_spread = -abs(beta_spread)
+        print("  FCI weights: spread sign flipped (was positive)")
+    if beta_dollar < 0:
+        beta_dollar = abs(beta_dollar)
+        print("  FCI weights: dollar sign flipped (was negative)")
 
     q = p.copy()
     q["du"] = q["unemployment"].diff()
