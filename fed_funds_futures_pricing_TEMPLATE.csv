@@ -1,0 +1,2 @@
+era,ym,meeting_date,asof_date,status,quality,source,contract,price,implied_avg_rate,pre_meeting_rate,expected_post_rate,market_implied_bps,outcomes_json,reason
+powell,2022-06,2022-06-15,2022-06-14,ok,real_zq_futures,Yahoo Finance historical ZQ contract close + FRED EFFR,ZQM22.CBT,,,,,,"[{""bps"":50,""probability"":40},{""bps"":75,""probability"":60}]",

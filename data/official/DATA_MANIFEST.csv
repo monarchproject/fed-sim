@@ -1,0 +1,4 @@
+file,description,source,notes
+data/official/macro_dataset_v3.csv,Bundled monthly macro panel used by the app before any live FRED fetch,FRED-derived processed snapshot,Runtime uses this CSV first so normal gameplay is offline; row dataQualityNote flags incomplete months rather than hiding them
+data/official/official_fomc_decisions.csv,Actual FOMC target moves used for Real Fed decision overlay,Official target-move table derived from target-rate history/event table,Market-implied columns ignored; rows beyond bundled macro max date removed
+fed_funds_futures_pricing.csv,Diagnostic/event-study or direct-market rows when available,SF Fed USMPD / user-provided direct futures data depending on quality,Not accepted as FedWatch/direct futures unless quality is a strict direct-market source
